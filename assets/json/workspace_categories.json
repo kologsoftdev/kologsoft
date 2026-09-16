@@ -1,0 +1,39 @@
+{
+  "category": "A",
+  "A1_High_Risk_Industrial": [
+    "LPG bottling plants",
+    "Fuel depots & tank farms",
+    "Oil processing facilities",
+    "Industrial gas plants",
+    "Power generation plants",
+    "Large factories with boilers/pressure systems",
+    "Mining (large & small scale)",
+    "Quarries & stone crushing plants",
+    "Sand winning companies",
+    "Cement & steel factories",
+    "Chemical factories",
+    "Paint factories",
+    "Pharmaceutical factories",
+    "Waste treatment plants",
+    "Hazardous waste facilities",
+    "Industrial incinerators",
+    "Large water treatment plants",
+    "Heavy engineering workshops",
+    "Large beverage factories",
+    "Mega plastics factories",
+    "Large agro-processing plants",
+    "High‑capacity cold storage facilities",
+    "High‑capacity logistics yards"
+  ],
+  "A2_High_Revenue_Institutions": [
+    "Banks & financial institutions (all branches)",
+    "Insurance headquarters",
+    "Telecommunications headquarters (MTN, Vodafone, AirtelTigo)",
+    "Large supermarkets/retail chains (Melcom, Shoprite, Palace)",
+    "Major malls and retail complexes",
+    "Large hospitals",
+    "Universities & tertiary institutions",
+    "Large hotels (4–5 star)",
+    "Corporate office towers"
+  ]
+}

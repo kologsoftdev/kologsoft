@@ -1,0 +1,90 @@
+{
+  "project_info": {
+    "project_number": "112167499905",
+    "project_id": "kologsoft-68317",
+    "storage_bucket": "kologsoft-68317.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:112167499905:android:cc3c7800e71b37375d7580",
+        "android_client_info": {
+          "package_name": "com.example.merchantserver"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "112167499905-f3nfhnj4roon96vqddt9760spkimo74h.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDg9OZ9Jz7ttV4RKtx8C_x6q6l1dcjiG5U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "112167499905-f3nfhnj4roon96vqddt9760spkimo74h.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "112167499905-6vnork7tcopnj6e7fqo8lsb2nfqkprv3.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.kpos.kologsoft"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:112167499905:android:313f8ac257f9bd015d7580",
+        "android_client_info": {
+          "package_name": "com.kpos.kologsoft"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "112167499905-h85q7p2cvvghb9qtsvjemntlahrnuck2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kpos.kologsoft",
+            "certificate_hash": "c3c5b8db368d8f819830d2fec3099c6249dcb3f4"
+          }
+        },
+        {
+          "client_id": "112167499905-f3nfhnj4roon96vqddt9760spkimo74h.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDg9OZ9Jz7ttV4RKtx8C_x6q6l1dcjiG5U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "112167499905-f3nfhnj4roon96vqddt9760spkimo74h.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "112167499905-6vnork7tcopnj6e7fqo8lsb2nfqkprv3.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.kpos.kologsoft"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

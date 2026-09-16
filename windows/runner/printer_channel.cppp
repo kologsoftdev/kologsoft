@@ -1,0 +1,71 @@
+
+#include "printer_channel.h"
+#include <flutter/method_channel.h>
+#include <flutter/standard_method_codec.h>
+#include <windows.h>
+#include <winspool.h>
+#include <memory>
+
+void SendToPrinter(const std::vector<uint8_t>& data) {
+    HANDLE hPrinter;
+
+    if (!OpenPrinter(NULL, &hPrinter, NULL)) return;
+
+    DOC_INFO_1 docInfo;
+    docInfo.pDocName = (LPWSTR)L"Flutter Receipt";
+    docInfo.pOutputFile = NULL;
+    docInfo.pDatatype = (LPWSTR)L"RAW";
+
+    if (StartDocPrinter(hPrinter, 1, (LPBYTE)&docInfo)) {
+        StartPagePrinter(hPrinter);
+
+        DWORD bytesWritten;
+        WritePrinter(hPrinter, (LPVOID)data.data(), static_cast<DWORD>(data.size()), &bytesWritten);
+
+        EndPagePrinter(hPrinter);
+        EndDocPrinter(hPrinter);
+    }
+
+    ClosePrinter(hPrinter);
+}
+
+void RegisterPrinterChannel(flutter::FlutterEngine* engine) {
+    auto channel = std::make_unique<
+                   flutter::MethodChannel<flutter::EncodableValue>>(
+            engine->messenger(), "printer_channel",
+                    &flutter::StandardMethodCodec::GetInstance());
+
+    channel->SetMethodCallHandler(
+            [](const flutter::MethodCall<flutter::EncodableValue>& call,
+               std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+
+                if (call.method_name() == "printPdf") {
+
+                    const auto* args = std::get_if<flutter::EncodableMap>(call.arguments());
+
+                    if (args) {
+                        auto it = args->find(flutter::EncodableValue("bytes"));
+
+                        if (it != args->end()) {
+                            const auto& list = std::get<flutter::EncodableList>(it->second);
+
+                            std::vector<uint8_t> data;
+                            for (const auto& item : list) {
+                                data.push_back(static_cast<uint8_t>(std::get<int>(item)));
+                            }
+
+                            SendToPrinter(data);
+
+                            result->Success(flutter::EncodableValue("Printed"));
+                            return;
+                        }
+                    }
+
+                    result->Error("ERROR", "Invalid data");
+                } else {
+                    result->NotImplemented();
+                }
+            });
+
+    channel.release();
+}
