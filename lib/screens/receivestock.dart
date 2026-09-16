@@ -106,7 +106,7 @@ class _StockReceivingState extends State<StockReceiving> with SingleTickerProvid
       _activeReceiptId = 'RCPT-${DateTime.now().millisecondsSinceEpoch}';
       _activeReceipt = {
         'transferid': id,
-        'transferref': transfer['docid'] ?? transfer['transactionid'],
+        'transferref': transfer['transferid'] ?? transfer['transactionid'],
         'sourcewarehouse': transfer['supplywarehousename'],
         'sourcewarehouseId': transfer['supplywarehouseid'],
         'destinationbranch': transfer['recievebranchname'],
@@ -349,7 +349,7 @@ class _StockReceivingState extends State<StockReceiving> with SingleTickerProvid
           orElse: () => null,
         );
 
-        final modeQty = (originalItem?['modeqty'] as num?)?.toDouble() ?? 1.0;
+        final modeQty = (originalItem?['modeqty'] as num?)?.toDouble() ?? 1;
         final receivedPieces = clampedQty * modeQty;
 
         _receivedItems[itemId] = {
@@ -2737,7 +2737,7 @@ class _StockReceivingState extends State<StockReceiving> with SingleTickerProvid
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                'Transfer #${_selectedTransfer!['docid']?.toString().substring(0, 8) ?? ''}',
+                                'Transfer #${_selectedTransfer!['transferid']?.toString() ?? ''}',
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontSize: 20,
@@ -3051,9 +3051,7 @@ class _StockReceivingState extends State<StockReceiving> with SingleTickerProvid
                             final receivedQty = (received?['received'] as num?)?.toDouble() ?? 0;
                             final status = item?['receivingstatus'];
                             double effectiveQty=0;
-                             effectiveQty = oldreceivedQty > 0
-                                ? oldreceivedQty
-                                : (receivedQty > 0 ? receivedQty :transferredQty );
+                            effectiveQty = oldreceivedQty > 0 ? oldreceivedQty : (receivedQty > 0 ? receivedQty :transferredQty );
 
 
                             Color getStatusColor() {
@@ -3148,57 +3146,59 @@ class _StockReceivingState extends State<StockReceiving> with SingleTickerProvid
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.end,
                                       children: [
-                                      Container(
-                                      width: 80,
-                                      height: 36,
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF1E3A5A),
-                                        borderRadius: BorderRadius.circular(6),
-                                        border: Border.all(
-                                          color: (() {
-
-                                            if (effectiveQty == 0) {
-                                              return Colors.white.withOpacity(0.2);
-                                            } else if (effectiveQty == transferredQty) {
-                                              return Colors.green;
-                                            } else if (effectiveQty > transferredQty) {
-                                              return Colors.orange;
-                                            } else {
-                                              return Colors.blue;
-                                            }
-                                          })(),
-                                        ),
-                                      ),
-                                        child: TextFormField(
-                                          initialValue: effectiveQty.toStringAsFixed(0),
-                                          style: const TextStyle(
-                                            color: Colors.black,
-                                            fontSize: 14,
-                                          ),
-                                          keyboardType: TextInputType.number,
-                                          textAlign: TextAlign.center,
-                                          decoration: InputDecoration(
-                                            hintText: '0',
-                                            hintStyle: TextStyle(
-                                              color: Colors.black.withOpacity(0.3),
+                                        Container(
+                                          width: 80,
+                                          height: 36,
+                                          // decoration: BoxDecoration(
+                                          //   color: const Color(0xFF1E3A5A),
+                                          //   borderRadius: BorderRadius.circular(6),
+                                          //   border: Border.all(
+                                          //     color: (() {
+                                          //
+                                          //       if (effectiveQty == 0) {
+                                          //         return Colors.white.withOpacity(0.2);
+                                          //       } else if (effectiveQty == transferredQty) {
+                                          //         return Colors.green;
+                                          //       } else if (effectiveQty > transferredQty) {
+                                          //         return Colors.orange;
+                                          //       } else {
+                                          //         return Colors.blue;
+                                          //       }
+                                          //     })(),
+                                          //   ),
+                                          // ),
+                                          child: TextFormField(
+                                            initialValue: effectiveQty.toStringAsFixed(0),
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 14,
                                             ),
-                                            border: InputBorder.none,
-                                          ),
+                                            keyboardType: TextInputType.number,
+                                            textAlign: TextAlign.center,
+                                            decoration: InputDecoration(
+                                              filled: true,
+                                              fillColor: const Color(0xFF1E3A5A),
+                                              hintText: '0',
+                                              hintStyle: TextStyle(
+                                                color: Colors.white,
+                                              ),
+                                              border: InputBorder.none,
+                                            ),
                                             //enabled: status!='completed',
                                             inputFormatters: [
                                               FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
                                             ],
-                                          onChanged: (value) {
-                                            final qty = double.tryParse(value) ?? 0;
-                                            _updateReceivedQuantity(
-                                              itemId,
-                                              effectiveQty,
-                                              qty,
-                                            );
-                                          },
-                                        ),
+                                            onChanged: (value) {
+                                              final qty = double.tryParse(value) ?? 0;
+                                              _updateReceivedQuantity(
+                                                itemId,
+                                                effectiveQty,
+                                                qty,
+                                              );
+                                            },
+                                          ),
 
-                                    ),
+                                        ),
 
 
                                       ],
