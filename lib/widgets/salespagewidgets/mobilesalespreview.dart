@@ -16,6 +16,8 @@ class MobileSalesPreview extends StatelessWidget {
     required this.onMomo,
     required this.onNewTransaction,
     required this.onCustomerInfo,
+    this.onSaveDirect,
+    this.saveDirectLabel = 'SAVE DIRECT',
     required this.onRemoveItem,
     required this.posPrint,
   });
@@ -32,6 +34,8 @@ class MobileSalesPreview extends StatelessWidget {
   final VoidCallback onMomo;
   final VoidCallback onNewTransaction;
   final VoidCallback onCustomerInfo;
+  final VoidCallback? onSaveDirect;
+  final String saveDirectLabel;
   final Function(int index) onRemoveItem;
   final bool posPrint;
   @override
@@ -218,6 +222,14 @@ class MobileSalesPreview extends StatelessWidget {
                   onRemoveItem: null,
                 ),
               ],
+              if (onSaveDirect != null)
+                actionTile(
+                  label: saveDirectLabel,
+                  icon: Icons.save,
+                  color: Colors.green,
+                  onTap: onSaveDirect!,
+                  onRemoveItem: null,
+                ),
               actionTile(
                 label: 'NEW TRANSACTION',
                 icon: Icons.add_shopping_cart,

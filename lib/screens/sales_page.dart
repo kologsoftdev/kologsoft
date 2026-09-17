@@ -7,7 +7,9 @@ import 'package:kologsoft/providers/Datafeed.dart';
 import 'package:provider/provider.dart';
 
 import '../models/branch.dart';
+import '../models/customerreg_model.dart';
 import '../models/itemmodel.dart';
+import '../models/salesmodel.dart';
 import '../paymentwidgets/BarcodeScannerScreen.dart';
 import '../paymentwidgets/changepasswordDialog.dart';
 import '../paymentwidgets/customerinfodialog.dart';
@@ -72,6 +74,7 @@ class _SalesPageState extends State<SalesPage> {
   String? _appliedDiscountCode;
   bool _showDiscountCodeField = false;
   final TextEditingController _bulkDiscountController = TextEditingController();
+  bool _isSavingDirect = false;
   @override
   void initState() {
     super.initState();
@@ -1105,6 +1108,152 @@ class _SalesPageState extends State<SalesPage> {
       );
     }
   }
+  Future<void> _saveDirectSale() async {
+    final salesProvider = Provider.of<SalesProvider>(context, listen: false);
+    final datafeed = Provider.of<Datafeed>(context, listen: false);
+    final salesItems = salesProvider.salesItems;
+
+    if (_isSavingDirect || salesItems.isEmpty) {
+      if (salesItems.isEmpty) snackMsg(context, 'Please add items to the sale first', Colors.red);
+      return;
+    }
+
+    final activeBranchId = _activeBranchId;
+    final activeBranchName = _activeBranchName;
+
+    // Validate stock
+    bool isValid = await salesProvider.validateCartStockOnSaves(activeBranchId);
+    if (!isValid) {
+      snackMsg(context, 'Insufficient stock detected. Please adjust cart.', Colors.red);
+      return;
+    }
+
+    setState(() => _isSavingDirect = true);
+
+    try {
+      final double totalAmount = salesProvider.calculateTaxableTotal();
+      final double totalDiscount = salesProvider.calculateDiscountTotal();
+      final double grossTotal = salesProvider.calculateGrossTotal();
+
+      final String customerId = '${datafeed.companyid.toLowerCase()}_cash';
+      final customerRef = datafeed.db.collection('customers').doc(customerId);
+      final customerDoc = await customerRef.get();
+
+      if (!customerDoc.exists) {
+        final customer = CustomerRegModel(
+          id: customerId,
+          branchname: activeBranchName,
+          branchid: activeBranchId,
+          name: 'Cash Customer',
+          contact: '0000000000',
+          customertype: 'cash',
+          creditlimit: '0',
+          companyid: datafeed.companyid,
+          staff: datafeed.staff,
+          date: DateTime.now(),
+          companyname: datafeed.company,
+          creditBalance: '0',
+        );
+        await customerRef.set(customer.toMap());
+      }
+
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final saleDocId = '${datafeed.companyid}_${datafeed.staffPosition}_$timestamp';
+      final receiptNumber = '${datafeed.staffPosition}$timestamp';
+
+      final itemsMap = {
+        for (int i = 0; i < salesItems.length; i++) 'item_$i': salesItems[i]
+      };
+
+      final payments = [
+        {
+          'amount': totalAmount,
+          'accountName': 'cash',
+          'accountNumber': 'cash',
+          'status': true,
+          'reference': 'cash',
+          'paymentmethod': 'cash',
+        }
+      ];
+
+      final now = DateTime.now();
+      final day = DateFormat('EEEE').format(now);
+      final year = now.year.toString();
+      final month = '${now.year}.${now.month}';
+      final weekNumber = ((now.difference(DateTime(now.year, 1, 1)).inDays) / 7).floor() + 1;
+      final week = '${now.year}.$weekNumber';
+      final formattedDate = salesProvider.saleDate;
+
+      final saleData = SalesModel(
+        id: saleDocId,
+        companyId: datafeed.companyid,
+        companyname: datafeed.company,
+        branchId: activeBranchId,
+        branchName: activeBranchName,
+        branchType: branchtype,
+        pricingtype: branchtype,
+        staffPosition: datafeed.staffPosition,
+        payments: payments,
+        receiptNumber: receiptNumber,
+        receiptby: datafeed.staff,
+        receiptat: Timestamp.now(),
+        paymentStatus: 'paid',
+        transMode: 'cash',
+        items: itemsMap,
+        totalamount: grossTotal,
+        amountPaid: totalAmount,
+        discount: totalDiscount,
+        change: 0.0,
+        itemCount: salesItems.length,
+        isreturned: false,
+        createdAt: Timestamp.now(),
+        createdBy: datafeed.staff,
+        approvedby: datafeed.staff,
+        printedby: '',
+        printedat: null,
+        staffemail: datafeed.staffemail,
+        receiptbyemail: datafeed.staffemail,
+        dateymd: formattedDate,
+        stockCheckedAt: Timestamp.now(),
+        timestamp: timestamp,
+        printed: false,
+        customerId: customerId,
+        customerName: 'Cash Customer',
+        customerPhone: '0000000000',
+        reciepted: true,
+        day: day,
+        week: week,
+        month: month,
+        year: year,
+        supplystatus: false,
+      );
+
+      await datafeed.db.collection('sales').doc(saleDocId).set(saleData.toMap());
+
+      final skipCheck = salesProvider.isServiceOnlySale(salesItems);
+      if (!context.mounted) return;
+      final approved = await salesProvider.ensureSaleApproved(context, saleDocId, skipStockCheck: skipCheck);
+
+      if (!approved) {
+        setState(() => _isSavingDirect = false);
+        return;
+      }
+
+      if (context.mounted) {
+        snackMsg(context, 'Sale saved successfully!', Colors.green);
+        Provider.of<SalesProvider>(context, listen: false).clearCurrentCart();
+      }
+    } catch (e) {
+      if (context.mounted) {
+        snackMsg(context, 'Error saving sale: $e', Colors.red);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSavingDirect = false);
+      }
+    }
+  }
+
   void _resetForm() {
     _itemController.clear();
     _barcodeController.clear();
@@ -3359,6 +3508,14 @@ class _SalesPageState extends State<SalesPage> {
                                                           minWidth: minWidth,
                                                         ),
                                                       ],
+                                                      if (value.accesslevel.toLowerCase().contains('sales attendance'))
+                                                        _previewActionTile(
+                                                          label: _isSavingDirect ? 'SAVING...' : 'SAVE',
+                                                          icon: _isSavingDirect ? Icons.hourglass_empty : Icons.save,
+                                                          color: Colors.green,
+                                                          onTap: _isSavingDirect ? () {} : _saveDirectSale,
+                                                          minWidth: minWidth,
+                                                        ),
                                                       _previewActionTile(
                                                         label:
                                                             'NEW TRANSACTION',
@@ -3469,6 +3626,10 @@ class _SalesPageState extends State<SalesPage> {
                                           selectedItem: _selectedItem,
                                         );
                                       },
+                                      onSaveDirect: value.accesslevel.toLowerCase().contains('sales attendance')
+                                          ? _saveDirectSale
+                                          : null,
+                                      saveDirectLabel: _isSavingDirect ? 'SAVING...' : 'SAVE DIRECT',
                                       onRemoveItem: (int index) {
                                         salesProvider.removeFromSalesPreview(index);
                                       },
