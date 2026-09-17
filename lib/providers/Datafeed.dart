@@ -752,14 +752,15 @@ class Datafeed extends ChangeNotifier {
                 .collection('branches')
                 .where("companyid", isEqualTo: companyid)
                 .orderBy('date', descending: true)
-                .get(const GetOptions(source: Source.serverAndCache));
+            .get();
+                //.get(const GetOptions(source: Source.serverAndCache));
 
             final seen = <String>{};
             branches = snap.docs
                 .where((doc) => seen.add(doc.id))
                 .map((doc) => BranchModel.fromJson(doc.data()))
                 .toList();
-
+print("Fetched ${branches.length} branches for company $companyid");
             notifyListeners();
           } catch (e) {
             debugPrint("Error fetching branches: $e");
@@ -4238,6 +4239,7 @@ class Datafeed extends ChangeNotifier {
     staff = "";
     staffemail = "";
     branch = "";
+    branches = [];
     branchid = "";
     staffPosition = 0;
     salesWarehouseIds = [];
@@ -4248,8 +4250,8 @@ class Datafeed extends ChangeNotifier {
     accesslevel = '';
     currentCompany = null;
     subscriptionTier = 'starter';
+    suppliers=[];
     await clearpermissions();
-
     if (!context.mounted) return;
     Navigator.pushNamedAndRemoveUntil(context, Routes.login, (route) => false);
     notifyListeners();
