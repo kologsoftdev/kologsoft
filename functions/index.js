@@ -5890,16 +5890,9 @@ function normalizePurchaseItems(raw) {
         itemid: item.itemid || "",
         item: item.item || "",
         barcode: item.barcode || "",
-        pieces: toNumber(
-          item.returnpieces ??
-          item.pieces ??
-          0
-        ),
-        value: toNumber(
-          item.price ??
-          item.returnvalue   ??
-          0
-        ),
+        pieces: toNumber(item.returnpieces ??item.pieces ?? 0),
+        boxpieces: toNumber(item.boxpieces ??item.modeqty ?? 0),
+        value: toNumber(item.price ??item.returnvalue ?? 0 ),
       }));
     }
 
@@ -5909,16 +5902,9 @@ function normalizePurchaseItems(raw) {
         itemid: item.itemid || "",
         item: item.item || "",
         barcode: item.barcode || "",
-        pieces: toNumber(
-          item.returnpieces ??
-          item.pieces ??
-          0
-        ),
-        value: toNumber(
-          item.price ??
-          item.returnvalue ??
-           0
-        ),
+        pieces: toNumber(item.returnpieces ??item.pieces ?? 0),
+        boxpieces: toNumber(item.boxpieces ??item.modeqty ?? 0),
+        value: toNumber(item.price ??item.returnvalue ?? 0),
       }));
     }
 
@@ -6091,27 +6077,17 @@ exports.syncPurchaseReturnToStockReport = onDocumentWritten( "purchase_returns/{
         ]);
 
         for (const itemId of allItemIds) {
-          const beforeItem =
-            beforeItems.find((i) => i.itemid === itemId) || {};
+          const beforeItem =beforeItems.find((i) => i.itemid === itemId) || {};
 
-          const afterItem =
-            afterItems.find((i) => i.itemid === itemId) || {};
+          const afterItem =afterItems.find((i) => i.itemid === itemId) || {};
 
-            const beforePieces = toNumber(
-            beforeItem.pieces || 0
-            );
+            const beforePieces = toNumber( beforeItem.pieces || 0);
 
-            const afterPieces = toNumber(
-            afterItem.pieces || 0
-            );
-            const boxpieces=beforeItem.boxpieces || afterItem.boxpieces || 1;
-            const beforeReturnVal = toNumber(
-            beforeItem.value || 0
-            );
+            const afterPieces = toNumber(afterItem.pieces || 0);
+            const boxpieces=toNumber(afterItem.boxpieces || beforeItem.boxpieces || 1);
+            const beforeReturnVal = toNumber(beforeItem.value || 0);
 
-            const afterReturnVal = toNumber(
-            afterItem.value || 0
-            );
+            const afterReturnVal = toNumber(afterItem.value || 0);
           
             const piecesDelta =afterPieces - beforePieces;
             const cartonqty = piecesDelta/boxpieces;
@@ -6187,7 +6163,7 @@ exports.syncPurchaseReturnToStockReport = onDocumentWritten( "purchase_returns/{
               purchaseReturn_value:admin.firestore.FieldValue.increment(valueDelta),
               purchaseReturn_cartonqty:admin.firestore.FieldValue.increment(cartonqty),
               stockout_balance:admin.firestore.FieldValue.increment(piecesDelta),
-               boxpieces:toNumber(boxpieces), 
+              boxpieces:boxpieces,
               stockout_value:admin.firestore.FieldValue.increment(valueDelta),
 
               lastupdate:admin.firestore.FieldValue.serverTimestamp(),
