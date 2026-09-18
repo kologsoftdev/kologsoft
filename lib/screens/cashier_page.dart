@@ -1944,6 +1944,7 @@ class _CashierPageState extends State<CashierPage> with SingleTickerProviderStat
 
     if (paymentStatus != 'pending' || transmode=='credit') {
       return SizedBox(
+
         width: 150,
         child: OutlinedButton(
           onPressed: provider.isLoadingpayment

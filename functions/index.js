@@ -2745,7 +2745,7 @@ const {dateymd, day, month, week, year} = resolveSaleDateParts(before);
 const salesSummarydocId = `${companyId}_${dateymd}`;
 const dailyRef = db.collection('stockreport').doc(salesSummarydocId);
 const salesSummaryRef = db.collection('salesSummary').doc(salesSummarydocId);
-
+const isReceipted=before?.reciepted || true;
 const stockReportState = getOrCreateDocState(stockReportDocStates, salesSummarydocId, dailyRef, {
   summarydate: dateymd,
   companyid: companyId,
@@ -2866,6 +2866,7 @@ applyIncrement(branchItemEntry, 'transaction_count', 1);
 applyIncrement(branchItemEntry, 'profit', -profit);
 branchItemEntry.updatedby = updatedBy;
 
+if(isReceipted){
 const staffSummaryRoot = ensureObject(summaryState.data, 'staffSummary');
 const staffBranchEntry = ensureObject(staffSummaryRoot, branchId);
 const staffEntry = ensureObject(staffBranchEntry, before.staffemail || 'system');
@@ -2882,7 +2883,7 @@ applyIncrement(staffEntry, before.transMode || 'cash', -itemAmount);
 applyIncrement(staffEntry, 'profit', -profit);
 applyIncrement(staffEntry, 'stafftransaction_count', 1);
 applyIncrement(staffEntry, 'staffCostof_goods', -stockValreduction_pieces);
-
+}
 // Reduce customer's credit balance if this was a credit sale
 if (
   (((before.transMode || "").toLowerCase() === "credit") ||
@@ -3274,6 +3275,7 @@ if (
             }, options: { merge: true } });
           }
 
+          const isReceipted = after.reciepted === true;
           const {dateymd, day, month, week, year} = resolveSaleDateParts(after);
           const salesSummarydocId = `${companyId}_${dateymd}`;
           const salesSummaryRef = db.collection('salesSummary').doc(salesSummarydocId);
@@ -3340,7 +3342,8 @@ if (
           applyIncrement(branchItemEntry, 'profit', toNumber(entry.profit));
           branchItemEntry.updatedby = updatedBy;
 
-            const staffSummaryRoot = ensureObject(summaryState.data, 'staffSummary');
+           if(isReceipted) {
+           const staffSummaryRoot = ensureObject(summaryState.data, 'staffSummary');
             const staffBranchEntry = ensureObject(staffSummaryRoot, entry.branchId);
             const staffEntry = ensureObject(staffBranchEntry, after.staffemail || 'system');
             staffEntry.staffemail = after.staffemail || 'system';
@@ -3357,7 +3360,7 @@ if (
             applyIncrement(staffEntry, after.transMode || 'cash', toNumber(entry.amount));
             applyIncrement(staffEntry, 'profit', toNumber(entry.profit));
             applyIncrement(staffEntry, 'staffCostof_goods', stockValueReduction);
-
+}
 
           const dailyRef = db.collection('stockreport').doc(salesSummarydocId);
           const stockReportState = getOrCreateDocState(stockReportDocStates, salesSummarydocId, dailyRef, {

@@ -163,7 +163,8 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
       color: const Color(0xFF0D2A3C),
       child: Padding(
         padding: const EdgeInsets.all(20),
-        child: Column(
+        child: SingleChildScrollView(
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Header with Print Button
@@ -184,7 +185,7 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Icon(
-                          Icons.receipt,
+                          Icons.backspace_outlined,
                           color: Colors.white,
                           size: 28,
                         ),
@@ -633,7 +634,7 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
           ],
         ),
       ),
-    );
+    ));
   }
 
   Widget _buildPreviewInfoRow(String label, String value, {bool alignRight = false, bool status = false, Color? statusColor}) {

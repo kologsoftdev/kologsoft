@@ -399,7 +399,7 @@ List<Map<String,dynamic>> communities=[];
 
     final returnRef = db
         .collection('purchase_returns')
-        .doc(docid);
+        .doc(transaction.docId);
 
     final updateSource = db
         .collection('stock_transactions')
@@ -426,7 +426,9 @@ List<Map<String,dynamic>> communities=[];
       'week': '${now.year}.${weekNumber(now)}', // 2026.32
       'day': DateFormat('EEEE').format(now),
       'returndate':returndate ,
-    });
+    },
+        SetOptions(merge: true),
+    );
 
     batch.update(updateSource, {
       'purchasereturn': true,
