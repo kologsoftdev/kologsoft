@@ -284,35 +284,67 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildPreviewInfoRow('Receipt No:', data.receiptNumber ?? 'N/A'),
-                        _buildPreviewInfoRow('Date:', _dateFormat.format(createdAt)),
-                        _buildPreviewInfoRow('Time:', _timeFormat.format(createdAt)),
-                        _buildPreviewInfoRow('Payment Mode:', (data.transMode ?? 'N/A').toUpperCase()),
+                        _buildPreviewInfoRow(
+                          'Receipt No:',
+                          data.receiptNumber ?? 'N/A',
+                        ),
+                        _buildPreviewInfoRow(
+                          'Date:',
+                          _dateFormat.format(createdAt),
+                        ),
+                        _buildPreviewInfoRow(
+                          'Time:',
+                          _timeFormat.format(createdAt),
+                        ),
+                        _buildPreviewInfoRow(
+                          'Payment Mode:',
+                          (data.transMode ?? 'N/A').toUpperCase(),
+                        ),
                       ],
                     ),
                   ),
+
+                  const SizedBox(width: 20),
+
                   Expanded(
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        _buildPreviewInfoRow('Customer:', data.customerName ?? 'Walk-in Customer', alignRight: true),
-                        if (data.customerPhone != null && data.customerPhone.toString().isNotEmpty)
-                          _buildPreviewInfoRow('Phone:', data.customerPhone!, alignRight: true),
-                        _buildPreviewInfoRow('Cashier:', data.createdBy ?? 'System', alignRight: true),
+                        _buildPreviewInfoRow(
+                          'Customer:',
+                          data.customerName ?? 'Walk-in Customer',
+                          alignRight: true,
+                        ),
+
+                        if (data.customerPhone != null &&
+                            data.customerPhone.toString().isNotEmpty)
+                          _buildPreviewInfoRow(
+                            'Phone:',
+                            data.customerPhone!,
+                            alignRight: true,
+                          ),
+
+                        _buildPreviewInfoRow(
+                          'Cashier:',
+                          data.createdBy ?? 'System',
+                          alignRight: true,
+                        ),
+
                         _buildPreviewInfoRow(
                           'Status:',
                           (data.paymentStatus ?? 'pending').toUpperCase(),
                           alignRight: true,
                           status: true,
-                          statusColor: data.paymentStatus == 'paid' ? Colors.green : Colors.orange,
+                          statusColor: data.paymentStatus == 'paid'
+                              ? Colors.green
+                              : Colors.orange,
                         ),
                       ],
                     ),
-                  ),
-                ],
+                  ),                ],
               ),
             ),
-
             const SizedBox(height: 20),
 
             // Items Table Header
@@ -457,79 +489,108 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
                   bottom: Radius.circular(8),
                 ),
                 border: Border(
-                  top: BorderSide(color: Colors.white.withOpacity(0.1)),
+                  top: BorderSide(
+                    color: Colors.white.withOpacity(0.1),
+                  ),
                 ),
               ),
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
+                  // LEFT SIDE - TOTAL ITEMS / TOTAL PIECES
                   Expanded(
-                    child: Row(
+                    child: Wrap(
+                      spacing: 20,
+                      runSpacing: 6,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        const Text(
-                          'Total Items: ',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 13,
-                          ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              'Total Items: ',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 13,
+                              ),
+                            ),
+                            Text(
+                              '${data.itemCount ?? items.length}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
-                        Text(
-                          '${data.itemCount ?? items.length}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(width: 20),
-                        const Text(
-                          'Total Pieces: ',
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 13,
-                          ),
-                        ),
-                        Text(
-                          '${_calculateTotalPieces(items)}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                          ),
+
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text(
+                              'Total Pieces: ',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                fontSize: 13,
+                              ),
+                            ),
+                            Text(
+                              '${_calculateTotalPieces(items)}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.green.shade900.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.attach_money,
-                          color: Colors.green,
-                          size: 16,
-                        ),
-                        Text(
-                          'GHS ${totalAmount.toStringAsFixed(2)}',
-                          style: const TextStyle(
+
+                  const SizedBox(width: 12),
+
+                  // TOTAL AMOUNT
+                  Flexible(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.green.shade900.withOpacity(0.3),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          const Icon(
+                            Icons.attach_money,
                             color: Colors.green,
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                            size: 16,
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              'GHS ${totalAmount.toStringAsFixed(2)}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.green,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-
             const SizedBox(height: 16),
 
             // Payment Summary
@@ -636,49 +697,70 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
       ),
     ));
   }
-
-  Widget _buildPreviewInfoRow(String label, String value, {bool alignRight = false, bool status = false, Color? statusColor}) {
+  Widget _buildPreviewInfoRow(
+      String label,
+      String value, {
+        bool alignRight = false,
+        bool status = false,
+        Color? statusColor,
+      }) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 4),
       child: Row(
-        mainAxisAlignment: alignRight ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisSize: MainAxisSize.max,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment:
+        alignRight ? MainAxisAlignment.end : MainAxisAlignment.start,
         children: [
           Text(
             label,
             style: TextStyle(
               color: Colors.white.withOpacity(0.6),
               fontSize: 12,
+              height: 1.1,
             ),
           ),
-          const SizedBox(width: 8),
-          if (status)
-            Container(
+
+          const SizedBox(width: 5),
+
+          Flexible(
+            child: status
+                ? Container(
               padding: const EdgeInsets.symmetric(
-                horizontal: 8,
+                horizontal: 7,
                 vertical: 2,
               ),
               decoration: BoxDecoration(
-                color: statusColor?.withOpacity(0.2) ?? Colors.orange.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(12),
+                color: statusColor?.withOpacity(0.2) ??
+                    Colors.orange.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
                 value,
+                softWrap: true,
+                textAlign:
+                alignRight ? TextAlign.right : TextAlign.left,
                 style: TextStyle(
                   color: statusColor ?? Colors.orange,
                   fontSize: 11,
+                  height: 1.05,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             )
-          else
-            Text(
+                : Text(
               value,
+              softWrap: true,
+              textAlign:
+              alignRight ? TextAlign.right : TextAlign.left,
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 13,
+                height: 1.1,
                 fontWeight: FontWeight.w500,
               ),
             ),
+          ),
         ],
       ),
     );

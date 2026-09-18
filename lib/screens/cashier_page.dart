@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'dart:async';
+import '../constants/constants.dart';
 import '../models/paymentMethod.dart';
 import '../paymentwidgets/changepasswordDialog.dart';
 import '../paymentwidgets/showlogout.dart';
@@ -1735,82 +1736,128 @@ class _CashierPageState extends State<CashierPage> with SingleTickerProviderStat
           const SizedBox(height: 20),
 
           if (paymentStatus != 'paid')
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton.icon(
-                onPressed: provider.isLoadingpayment
-                    ? null
-                    : ()async {
-                  if (_cashierFormKey.currentState!.validate()) {
-                    if (paymentMethod.toLowerCase() == 'momo' && selectedNetwork == null) {
-
-                      _showErrorSnackBar('Please select a mobile money network');
-                      return;
-                    }
-
-                    final newamountPaid = double.tryParse(amountPaidController!.text) ?? totalAmount;
-                    final totalamountPaid = newamountPaid + amountPaid;
-                    final balance = totalAmount - totalamountPaid;
-                    final change = totalamountPaid-totalAmount;
-                    final accountNumber=accountNumberController?.text.toString().trim();
-                    final reference=referenceController.text.toString().trim();
-                    final paymentStatus = 'paid';
-
-                    final  Map<String, Map<String, dynamic>>paymentMethodConfig = {
-                      'cash': {
-                        'accountNumber': 'cash',
-                        'amountPaid': totalAmount,
-                      },
-                      'momo': {
-                        'accountName': selectedNetwork,
-                        'status': false,
-                      },
-                      'bank_transfer': {
-                        'accountNumber': reference,
-                      },
-                      'cheque': {
-                        'accountNumber': reference,
-                      },
-                      'card': {
-                        'accountNumber': paymentMethod,
-                      },
-                    };
-
-                    final config = paymentMethodConfig[paymentMethod] ?? {};
-
-                    final paymentData =PaymentMethodModel(id: invoiceId, amount:config['amountPaid']?? newamountPaid,totalamount:totalAmount, paymentmethod:paymentMethod, accountName:config['accountName'] ?? paymentMethod, accountNumber: config['accountNumber'] ?? accountNumber, status: config['status'] ?? true,change:change,balance: balance,reference: reference);
-
-                    try {
-                      final res = await provider.processPayment(paymentData);
-                      final change = res['change'] as double? ?? 0.0;
-
-                      if (change > 0) {
-                        _showSuccessSnackBar('Payment processed successfully. Change: GHS ${change.toStringAsFixed(2)}');
-                      } else {
-                        _showSuccessSnackBar('Payment processed successfully');
+            Center(
+              child: SizedBox(
+                width: 250,
+                child: ElevatedButton.icon(
+                  onPressed: provider.isLoadingpayment
+                      ? null
+                      : () async {
+                    if (_cashierFormKey.currentState!.validate()) {
+                      if (paymentMethod.toLowerCase() == 'momo' &&
+                          selectedNetwork == null) {
+                        _showErrorSnackBar(
+                          'Please select a mobile money network',
+                        );
+                        return;
                       }
-                      referenceController.clear();
-                      amountPaidController!.clear();
-                      accountNumberController?.clear();
 
-                    } catch (e) {
-                      _showErrorSnackBar('Failed to process payment: $e');
+                      final newamountPaid =
+                          double.tryParse(amountPaidController!.text) ??
+                              totalAmount;
+
+                      final totalamountPaid =
+                          newamountPaid + amountPaid;
+
+                      final balance =
+                          totalAmount - totalamountPaid;
+
+                      final change =
+                          totalamountPaid - totalAmount;
+
+                      final accountNumber =
+                      accountNumberController?.text.trim();
+
+                      final reference =
+                      referenceController.text.trim();
+
+                      final Map<String, Map<String, dynamic>>
+                      paymentMethodConfig = {
+                        'cash': {
+                          'accountNumber': 'cash',
+                          'amountPaid': totalAmount,
+                        },
+                        'momo': {
+                          'accountName': selectedNetwork,
+                          'status': false,
+                        },
+                        'bank_transfer': {
+                          'accountNumber': reference,
+                        },
+                        'cheque': {
+                          'accountNumber': reference,
+                        },
+                        'card': {
+                          'accountNumber': paymentMethod,
+                        },
+                      };
+
+                      final config =
+                          paymentMethodConfig[paymentMethod] ?? {};
+
+                      final paymentData = PaymentMethodModel(
+                        id: invoiceId,
+                        amount: config['amountPaid'] ?? newamountPaid,
+                        totalamount: totalAmount,
+                        paymentmethod: paymentMethod,
+                        accountName:
+                        config['accountName'] ?? paymentMethod,
+                        accountNumber:
+                        config['accountNumber'] ?? accountNumber,
+                        status: config['status'] ?? true,
+                        change: change,
+                        balance: balance,
+                        reference: reference,
+                      );
+
+                      try {
+                        LoadingDialog.show(
+                          context,
+                          message: 'please wait...',
+                        );
+
+                        final res =await provider.processPayment(paymentData);
+
+                         final paymentChange = res['change'] as double? ?? 0.0;
+
+                        if (paymentChange > 0) {
+                          _showSuccessSnackBar(
+                            'Payment processed successfully. '
+                                'Change: GHS ${paymentChange.toStringAsFixed(2)}',
+                          );
+                        } else {
+                          _showSuccessSnackBar(
+                            'Payment processed successfully',
+                          );
+                        }
+
+                        referenceController.clear();
+                        amountPaidController!.clear();
+                        accountNumberController?.clear();
+                      } catch (e) {
+                        _showErrorSnackBar(
+                          'Failed to process payment: $e',
+                        );
+                      } finally {
+                        LoadingDialog.hide();
+                      }
                     }
-
-                  }
-                },
-                icon: provider.isLoadingpayment
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                    : const Icon(Icons.payment),
-                label: Text(
-                  provider.isLoadingpayment ? 'Processing...' : 'Process Payment',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green.shade700,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  },
+                  icon: const Icon(Icons.payment),
+                  label: Text(
+                    provider.isLoadingpayment
+                        ? 'Processing...'
+                        : 'Process Payment',
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green.shade700,
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: Colors.green.shade700,
+                    disabledForegroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
                 ),
               ),
             ),

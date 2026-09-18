@@ -13,7 +13,6 @@ import '../paymentwidgets/changepasswordDialog.dart';
 import '../paymentwidgets/showlogout.dart';
 import '../providers/routes.dart';
 
-// ---------- Models ----------
 class SaleItem {
   final String name;
   final double qty;
@@ -167,7 +166,6 @@ class Sale {
   int get pendingCount => items.where((item) => !item.isSupplied).length;
 }
 
-// ---------- Home Widget ----------
 class SupplyQueueHome extends StatefulWidget {
   const SupplyQueueHome({super.key});
 
