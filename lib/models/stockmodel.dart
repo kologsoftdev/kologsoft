@@ -206,8 +206,8 @@ class InvoiceItem {
       'taxamount': taxAmount,
       'taxtype': taxType,
       'taxvalue': taxValue,
-      'total': total,
-      'boxpieces': boxpieces,
+      'total':total,
+      'boxpieces':boxpieces,
     };
   }
 }

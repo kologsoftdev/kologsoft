@@ -690,32 +690,19 @@ class Sidebar extends StatelessWidget {
                         Navigator.pushNamed(context, Routes.warehousehomescreen);
                       },
                     ),
-                    ListTile(
-                      leading: const Icon(
-                        Icons.report,
-                        color: Colors.white,
-                      ),
-                      title: const Text(
-                        'Supply Report',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      onTap: () {
-                        Navigator.pushNamed(context, Routes.warehousesupplyreport);
-                      },
-                    ),
-                    ListTile(
-                      leading: const Icon(
-                        Icons.receipt_long,
-                        color: Colors.white,
-                      ),
-                      title: const Text(
-                        'Transaction Supply Report',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      onTap: () {
-                        Navigator.pushNamed(context, Routes.transactionsupplyreport);
-                      },
-                    ),
+                    // ListTile(
+                    //   leading: const Icon(
+                    //     Icons.receipt_long,
+                    //     color: Colors.white,
+                    //   ),
+                    //   title: const Text(
+                    //     'Transaction Supply Report',
+                    //     style: TextStyle(color: Colors.white),
+                    //   ),
+                    //   onTap: () {
+                    //     Navigator.pushNamed(context, Routes.transactionsupplyreport);
+                    //   },
+                    // ),
                     if(value.hasFeature('deleted_stock'))
                     ListTile(
                       leading: const Icon(
@@ -743,19 +730,19 @@ class Sidebar extends StatelessWidget {
                     //     Navigator.pushNamed(context, Routes.uploadstock);
                     //   },
                     // ),
-                    ListTile(
-                      leading: const Icon(
-                        Icons.transfer_within_a_station,
-                        color: Colors.white,
-                      ),
-                      title: const Text(
-                        'Upload stock transfers',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                      onTap: () {
-                        Navigator.pushNamed(context, Routes.uploadstocktransfer);
-                      },
-                    ),
+                    // ListTile(
+                    //   leading: const Icon(
+                    //     Icons.transfer_within_a_station,
+                    //     color: Colors.white,
+                    //   ),
+                    //   title: const Text(
+                    //     'Upload stock transfers',
+                    //     style: TextStyle(color: Colors.white),
+                    //   ),
+                    //   onTap: () {
+                    //     Navigator.pushNamed(context, Routes.uploadstocktransfer);
+                    //   },
+                    // ),
 
                   ],
                 ),
@@ -1444,7 +1431,7 @@ class Sidebar extends StatelessWidget {
                         color: Colors.white,
                       ),
                       title: const Text(
-                        'Supply Report',
+                        'Warehouse Supply Report',
                         style: TextStyle(color: Colors.white),
                       ),
                       onTap: () {

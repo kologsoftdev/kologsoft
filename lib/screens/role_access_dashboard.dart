@@ -14,10 +14,15 @@ class RoleAccessDashboard extends StatefulWidget {
 }
 
 class _RoleAccessDashboardState extends State<RoleAccessDashboard> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  String _selectedCategory = 'All';
+
   @override
   void initState() {
     super.initState();
     Future.microtask(() {
+      if (!mounted) return;
       final datafeed = context.read<Datafeed>();
       if (datafeed.roleAccessSelections == null &&
           !datafeed.roleAccessLoading &&
@@ -25,7 +30,28 @@ class _RoleAccessDashboardState extends State<RoleAccessDashboard> {
         datafeed.loadRoleAccessSelections();
       }
     });
+  }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Map<String, List<RoleAccessAction>> _groupActions(List<RoleAccessAction> actions) {
+    final Map<String, List<RoleAccessAction>> groups = {
+      'All': actions,
+    };
+
+    for (final action in actions) {
+      final category = action.badge.isNotEmpty ? action.badge : 'General';
+      if (!groups.containsKey(category)) {
+        groups[category] = [];
+      }
+      groups[category]!.add(action);
+    }
+
+    return groups;
   }
 
 
@@ -67,7 +93,7 @@ class _RoleAccessDashboardState extends State<RoleAccessDashboard> {
                             Container(
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
-                                color: colorScheme.primary.withOpacity(0.1),
+                                color: colorScheme.primary.withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Icon(
@@ -139,7 +165,7 @@ class _RoleAccessDashboardState extends State<RoleAccessDashboard> {
                               ),
                             ),
                             filled: true,
-                            fillColor: colorScheme.surfaceVariant,
+                            fillColor: colorScheme.surfaceContainerHighest,
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 14,
                               vertical: 16,
@@ -192,7 +218,7 @@ class _RoleAccessDashboardState extends State<RoleAccessDashboard> {
                               ),
                             ),
                             filled: true,
-                            fillColor: colorScheme.surfaceVariant,
+                            fillColor: colorScheme.surfaceContainerHighest,
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 14,
                               vertical: 16,
@@ -249,7 +275,7 @@ class _RoleAccessDashboardState extends State<RoleAccessDashboard> {
                               ),
                             ),
                             filled: true,
-                            fillColor: colorScheme.surfaceVariant,
+                            fillColor: colorScheme.surfaceContainerHighest,
                             contentPadding: const EdgeInsets.symmetric(
                               horizontal: 14,
                               vertical: 16,
@@ -396,370 +422,488 @@ class _RoleAccessDashboardState extends State<RoleAccessDashboard> {
     final colorScheme = theme.colorScheme;
     final datafeed = context.watch<Datafeed>();
     final roleLabel = _formatRoleName(datafeed.accesslevel);
-    double screenWidth = MediaQuery.of(context).size.width;
-    final isLoading =
-        datafeed.roleAccessLoading && datafeed.roleAccessSelections == null;
-    final hasError =
-        datafeed.roleAccessError && datafeed.roleAccessSelections == null;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isDesktop = screenWidth >= 1024;
+
+    final isLoading = datafeed.roleAccessLoading && datafeed.roleAccessSelections == null;
+    final hasError = datafeed.roleAccessError && datafeed.roleAccessSelections == null;
+
     final selections = datafeed.roleAccessSelections ??
         (isLoading ? const <String, List<String>>{} : getDefaultRoleAccessSelections());
-    final actions = isLoading
+
+    final allActions = isLoading
         ? const <RoleAccessAction>[]
         : buildRoleAccessActions(
-      datafeed.accesslevel,
-      roleSelections: selections,
-    );
+            datafeed.accesslevel,
+            roleSelections: selections,
+          );
 
-    final Widget bodyContent;
-    if (isLoading) {
-      bodyContent = const Center(child: CircularProgressIndicator());
-    } else if (hasError) {
-      bodyContent = Center(
-        child: Text(
-          'Unable to load role access selections. Please try again.',
-          textAlign: TextAlign.center,
-          style: theme.textTheme.bodyMedium,
-        ),
-      );
-    } else if (actions.isEmpty) {
-      bodyContent = const Center(
-        child: Text('No role-based actions are available yet.'),
-      );
-    } else {
-      bodyContent = LayoutBuilder(
-        builder: (context, constraints) {
-          final double maxCrossAxisExtent = constraints.maxWidth < 680
-              ? constraints.maxWidth
-              : constraints.maxWidth < 1080
-              ? 320
-              : constraints.maxWidth < 1400
-              ? 300
-              : 280;
+    final groupedActions = _groupActions(allActions);
+    final categories = groupedActions.keys.toList()..sort((a, b) {
+      if (a == 'All') return -1;
+      if (b == 'All') return 1;
+      return a.compareTo(b);
+    });
 
-          return GridView.builder(
-            padding: const EdgeInsets.only(top: 4),
-            itemCount: actions.length,
-            physics: const BouncingScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-              maxCrossAxisExtent: maxCrossAxisExtent,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
-              childAspectRatio: 1.16,
+    if (!_selectedCategory.contains('All') && !categories.contains(_selectedCategory)) {
+      _selectedCategory = 'All';
+    }
+
+    final currentActions = groupedActions[_selectedCategory] ?? [];
+    final filteredActions = currentActions.where((action) {
+      return action.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          action.description.toLowerCase().contains(_searchQuery.toLowerCase());
+    }).toList();
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      drawer: !isDesktop ? _buildSidebar(context, categories, datafeed, roleLabel) : null,
+      body: Row(
+        children: [
+          if (isDesktop) _buildSidebar(context, categories, datafeed, roleLabel),
+          Expanded(
+            child: Column(
+              children: [
+                _buildTopBar(context, datafeed, isDesktop),
+                Expanded(
+                  child: isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : hasError
+                          ? _buildErrorState(datafeed, colorScheme)
+                          : allActions.isEmpty
+                              ? _buildEmptyState(theme)
+                              : _buildContentArea(context, filteredActions, theme, isDesktop),
+                ),
+              ],
             ),
-            itemBuilder: (context, index) {
-              final action = actions[index];
-              return InkWell(
-                borderRadius: BorderRadius.circular(16),
-                onTap: () {
-                  if (action.route.isNotEmpty) {
-                    Navigator.pushNamed(context, action.route);
-                  }
-                },
-                child: Container(
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSidebar(BuildContext context, List<String> categories, Datafeed datafeed, String roleLabel) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final isDesktop = MediaQuery.of(context).size.width >= 1024;
+
+    return Container(
+      width: 260,
+      color: const Color(0xFF1E293B),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+            alignment: Alignment.centerLeft,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: colorScheme.surface,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: colorScheme.onSurface.withOpacity(0.08),
+                    color: colorScheme.primary,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(Icons.dashboard_rounded, color: Colors.white, size: 28),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  datafeed.company.isEmpty ? 'KOLOG POS' : datafeed.company.toUpperCase(),
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.2,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  'Command Center',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: Colors.white54,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(color: Colors.white10, height: 1),
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text(
+              'CATEGORIES',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: Colors.white38,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1.5,
+              ),
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              itemCount: categories.length,
+              itemBuilder: (context, index) {
+                final cat = categories[index];
+                final isSelected = _selectedCategory == cat;
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: ListTile(
+                    dense: true,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    selected: isSelected,
+                    selectedTileColor: Colors.white.withOpacity(0.08),
+                    leading: Icon(
+                      _getCategoryIcon(cat),
+                      color: isSelected ? Colors.white : Colors.white54,
+                      size: 20,
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: theme.brightness == Brightness.dark
-                            ? Colors.black.withOpacity(0.35)
-                            : Colors.black.withOpacity(0.08),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
+                    title: Text(
+                      cat,
+                      style: TextStyle(
+                        color: isSelected ? Colors.white : Colors.white70,
+                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                       ),
-                    ],
+                    ),
+                    onTap: () {
+                      setState(() => _selectedCategory = cat);
+                      if (!isDesktop) Navigator.pop(context);
+                    },
                   ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 14,
-                    vertical: 12,
+                );
+              },
+            ),
+          ),
+          const Divider(color: Colors.white10, height: 1),
+          _buildSidebarProfile(context, datafeed, theme),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSidebarProfile(BuildContext context, Datafeed datafeed, ThemeData theme) {
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: InkWell(
+        onTap: () => Navigator.pushNamed(context, Routes.staffprofile),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: Colors.blueAccent,
+                child: Text(
+                  datafeed.staff.isNotEmpty ? datafeed.staff[0].toUpperCase() : 'U',
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      datafeed.staff.isEmpty ? 'User' : datafeed.staff,
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      _formatRoleName(datafeed.accesslevel),
+                      style: const TextStyle(color: Colors.white38, fontSize: 11),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Colors.white24, size: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTopBar(BuildContext context, Datafeed datafeed, bool isDesktop) {
+    return Container(
+      height: 72,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+      ),
+      child: Row(
+        children: [
+          if (!isDesktop)
+            IconButton(
+              icon: const Icon(Icons.menu_rounded, color: Color(0xFF64748B)),
+              onPressed: () => Scaffold.of(context).openDrawer(),
+            ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Container(
+              height: 44,
+              constraints: const BoxConstraints(maxWidth: 400),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (val) => setState(() => _searchQuery = val),
+                decoration: const InputDecoration(
+                  hintText: 'Search modules...',
+                  hintStyle: TextStyle(color: Color(0xFF94A3B8), fontSize: 14),
+                  prefixIcon: Icon(Icons.search_rounded, color: Color(0xFF94A3B8), size: 20),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(vertical: 10),
+                ),
+              ),
+            ),
+          ),
+          const Spacer(),
+          IconButton(
+            icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
+            tooltip: 'Logout',
+            onPressed: () => _showLogoutDialog(context, datafeed),
+          ),
+          const SizedBox(width: 8),
+          _buildTopBarProfile(context, datafeed),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTopBarProfile(BuildContext context, Datafeed datafeed) {
+    return PopupMenuButton<String>(
+      offset: const Offset(0, 52),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Row(
+        children: [
+          const VerticalDivider(width: 32, indent: 20, endIndent: 20, color: Color(0xFFE2E8F0)),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                datafeed.staff.isEmpty ? 'User' : datafeed.staff,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E293B)),
+              ),
+              Text(
+                datafeed.company.isEmpty ? 'Kolog POS' : datafeed.company,
+                style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+              ),
+            ],
+          ),
+          const SizedBox(width: 12),
+          const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0xFF94A3B8)),
+        ],
+      ),
+      itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: 'password',
+          child: Row(
+            children: [
+              Icon(Icons.lock_reset_rounded, size: 20, color: Colors.blueGrey),
+              SizedBox(width: 12),
+              Text('Change Password'),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'profile',
+          child: Row(
+            children: [
+              Icon(Icons.person_outline_rounded, size: 20, color: Colors.blueGrey),
+              SizedBox(width: 12),
+              Text('My Profile'),
+            ],
+          ),
+        ),
+      ],
+      onSelected: (val) {
+        if (val == 'password') _showChangePasswordDialog(context, datafeed);
+        if (val == 'profile') Navigator.pushNamed(context, Routes.staffprofile);
+      },
+    );
+  }
+
+  Widget _buildContentArea(BuildContext context, List<RoleAccessAction> actions, ThemeData theme, bool isDesktop) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      physics: const BouncingScrollPhysics(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                _selectedCategory,
+                style: theme.textTheme.headlineSmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFF1E293B),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  '${actions.length}',
+                  style: const TextStyle(color: Colors.blue, fontWeight: FontWeight.bold, fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+              maxCrossAxisExtent: isDesktop ? 340 : 400,
+              mainAxisSpacing: 20,
+              crossAxisSpacing: 20,
+              childAspectRatio: 2.2,
+            ),
+            itemCount: actions.length,
+            itemBuilder: (context, index) {
+              return _buildModernTile(context, actions[index]);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildModernTile(BuildContext context, RoleAccessAction action) {
+    final theme = Theme.of(context);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0F172A).withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            if (action.route.isNotEmpty) {
+              Navigator.pushNamed(context, action.route);
+            }
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: action.color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(14),
                   ),
+                  child: Icon(action.icon, color: action.color, size: 28),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
                   child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: action.color.withValues(alpha: 0.16),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              action.icon,
-                              color: action.color,
-                              size: 20,
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              action.title,
-                              style: theme.textTheme.titleSmall?.copyWith(
-                                fontWeight: FontWeight.w700,
-                                color: colorScheme.onSurface,
-                              ),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
+                      Text(
+                        action.title,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF1E293B),
+                          height: 1.1,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 4),
                       Text(
                         action.description,
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: colorScheme.onSurface.withOpacity(0.72),
-                          height: 1.35,
+                          color: const Color(0xFF64748B),
+                          height: 1.2,
                         ),
-                        maxLines: 3,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const Spacer(),
-                      Align(
-                        alignment: Alignment.bottomLeft,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: colorScheme.surfaceVariant,
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Text(
-                            action.badge,
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: colorScheme.onSurface,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
                     ],
                   ),
                 ),
-              );
-            },
-          );
-        },
-      );
-    }
-
-    return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: colorScheme.primary,
-        foregroundColor: colorScheme.onPrimary,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Quick Access - $roleLabel'),
-            Text(
-              datafeed.company.isEmpty ? 'Role Access' : datafeed.company,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: colorScheme.onPrimary.withOpacity(0.88),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-
-          if (actions.isNotEmpty)
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.menu_open),
-              tooltip: 'Quick links',
-              onSelected: (value) {
-                final action = actions.firstWhere((item) => item.id == value);
-                if (action.route.isNotEmpty) {
-                  Navigator.pushNamed(context, action.route);
-                }
-              },
-              itemBuilder: (context) => actions
-                  .map(
-                    (action) => PopupMenuItem<String>(
-                  value: action.id,
-                  child: Row(
-                    children: [
-                      Icon(action.icon, size: 18, color: action.color),
-                      const SizedBox(width: 10),
-                      Expanded(child: Text(action.title)),
-                    ],
-                  ),
-                ),
-              )
-                  .toList(),
-            ),
-            PopupMenuButton<String>(
-            icon: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircleAvatar(
-                  backgroundColor: Colors.blue,
-                  radius: 16,
-                  child: Text(
-                    datafeed.staff.isNotEmpty
-                        ? datafeed.staff[0].toUpperCase()
-                        : 'U',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                if (screenWidth > 600)
-                  Text(
-                    datafeed.staff.isNotEmpty ? datafeed.staff : 'User',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Colors.white70,
-                    ),
-                  ),
-                const Icon(Icons.arrow_drop_down),
+                const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFFCBD5E1), size: 14),
               ],
             ),
-            offset: const Offset(0, 50),
-            color: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            itemBuilder: (BuildContext context) => [
-              PopupMenuItem<String>(
-                enabled: false,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      datafeed.staff.isNotEmpty ? datafeed.staff : 'User',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    if (datafeed.staffemail.isNotEmpty)
-                      Text(
-                        datafeed.staffemail,
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    const Divider(),
-                  ],
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'profile',
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.person_outline,
-                      size: 20,
-                      color: Colors.green,
-                    ),
-                    const SizedBox(width: 12),
-                    const Text(
-                      'My Profile',
-                      style: TextStyle(color: Colors.black87),
-                    ),
-                  ],
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'password',
-                child: Row(
-                  children: [
-                    Icon(Icons.lock_outline, size: 20, color: Colors.blue),
-                    const SizedBox(width: 12),
-                    const Text(
-                      'Change Password',
-                      style: TextStyle(color: Colors.black87),
-                    ),
-                  ],
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'logout',
-                child: Row(
-                  children: [
-                    const Icon(Icons.logout, size: 20, color: Colors.red),
-                    const SizedBox(width: 12),
-                    const Text(
-                      'Logout',
-                      style: TextStyle(color: Colors.red),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            onSelected: (String selectedValue) async {
-              if (selectedValue == 'logout') {
-                _showLogoutDialog(context, datafeed);
-              } else if (selectedValue == 'password') {
-                _showChangePasswordDialog(context, datafeed);
-              } else if (selectedValue == 'profile') {
-                Navigator.pushNamed(context, Routes.staffprofile);
-              }
-            },
-          ),
-
-        ],
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: theme.cardColor,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: theme.brightness == Brightness.dark
-                          ? Colors.black.withOpacity(0.35)
-                          : Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                  border: Border.all(
-                    color: colorScheme.onSurface.withOpacity(0.08),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Welcome back, ${datafeed.staff.isEmpty ? 'User' : datafeed.staff}',
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: colorScheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'Use the menu below to open the modules available for your role.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.onSurface.withOpacity(0.72),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              Expanded(child: bodyContent),
-            ],
           ),
         ),
+      ),
+    );
+  }
+
+  IconData _getCategoryIcon(String category) {
+    switch (category.toLowerCase()) {
+      case 'all': return Icons.grid_view_rounded;
+      case 'entry': return Icons.add_circle_outline_rounded;
+      case 'report': return Icons.bar_chart_rounded;
+      case 'view': return Icons.visibility_outlined;
+      case 'account': return Icons.account_balance_wallet_outlined;
+      case 'branch': return Icons.storefront_rounded;
+      case 'read/write': return Icons.edit_note_rounded;
+      case 'home': return Icons.home_repair_service_outlined;
+      default: return Icons.category_outlined;
+    }
+  }
+
+  Widget _buildErrorState(Datafeed datafeed, ColorScheme colorScheme) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.cloud_off_rounded, size: 64, color: Colors.redAccent),
+          const SizedBox(height: 16),
+          const Text('Connection lost or data error', style: TextStyle(fontWeight: FontWeight.bold)),
+          TextButton(
+            onPressed: () => datafeed.loadRoleAccessSelections(force: true),
+            child: const Text('Try Again'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(ThemeData theme) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.lock_clock_rounded, size: 64, color: Colors.blueGrey.withOpacity(0.2)),
+          const SizedBox(height: 16),
+          Text('No modules assigned to your role', style: theme.textTheme.bodyMedium?.copyWith(color: Colors.blueGrey)),
+        ],
       ),
     );
   }
