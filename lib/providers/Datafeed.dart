@@ -3658,17 +3658,24 @@ print("Fetched ${branches.length} branches for company $companyid");
       return parts.join(', ');
     }
 
+    // Normalized branch filter
+    final filterBranch = (selectedBranch == null ||
+        selectedBranch.isEmpty ||
+        selectedBranch.toLowerCase() == 'all')
+        ? null
+        : selectedBranch.trim();
+
     for (final doc in salesSnap.docs) {
       final data = doc.data();
 
-      final staffemail = (data['receiptbyemail'] ?? '').toString().trim();
+      // Filter by staff email first. 
+      // This is the primary key for staff-based transactions.
+      final staffemail = (data['receiptbyemail'] ?? data['staffemail'] ?? '').toString().trim();
       if (staffemail.toLowerCase() != staffEmail.toLowerCase()) continue;
 
-      if (selectedBranch != null &&
-          selectedBranch.isNotEmpty &&
-          data['branchId']?.toString() != selectedBranch) {
-        continue;
-      }
+      // We no longer strictly filter by doc-level branchId here because 
+      // Sales Point staff transactions might belong to a warehouse in Firestore (stock deduction)
+      // while being reported under their sales point in the summary report.
 
       sales.add({
         'type': 'sale',
@@ -3796,12 +3803,16 @@ print("Fetched ${branches.length} branches for company $companyid");
                 .where('companyId', isEqualTo: companyid)
                 .where('dateymd', whereIn: chunk);
 
-
+            // Removing query-level branchId filter to capture all relevant transactions,
+            // especially for Sales Point staff where doc-level branchId might be a warehouse.
+            // We'll filter in-memory instead.
+            /*
             if (branchId != null &&
                 branchId.isNotEmpty &&
                 branchId.toLowerCase() != 'all') {
               query = query.where('branchId', isEqualTo: branchId.trim());
             }
+            */
 
             final snap = await query.get();
             allDocs.addAll(snap.docs);
@@ -3814,12 +3825,31 @@ print("Fetched ${branches.length} branches for company $companyid");
             final docTransMode = (data['transMode'] ?? '').toString().toLowerCase().trim();
             final resolvedTransMode = docTransMode.isNotEmpty ? docTransMode : 'cash';
 
+            // Document-level branch check
+            final bool docMatchesBranch = branchId == null ||
+                branchId.isEmpty ||
+                branchId.toLowerCase() == 'all' ||
+                data['branchId']?.toString().trim() == branchId.trim();
+
             items.forEach((key, value) {
               if (value is! Map) return;
               final itemMap = Map<String, dynamic>.from(value);
 
-              final currentItemId = (itemMap['itemid'] ?? '').toString().trim();
-              if (currentItemId != itemId.trim()) return;
+              // Match by itemid (Firestore ID) OR barcode
+              final currentItemId = (itemMap['itemid'] ?? itemMap['itemId'] ?? itemMap['id'] ?? '').toString().trim();
+              final currentBarcode = (itemMap['barcode'] ?? '').toString().trim();
+              
+              if (currentItemId != itemId.trim() && currentBarcode != itemId.trim()) return;
+
+              // Item-level branch check
+              final itemBranchId = (itemMap['branchid'] ?? data['branchId'] ?? '').toString().trim();
+              final bool itemMatchesBranch = branchId == null ||
+                  branchId.isEmpty ||
+                  branchId.toLowerCase() == 'all' ||
+                  itemBranchId == branchId.trim();
+
+              // If filtering by branch, only include if document or item specifically matches
+              if (!docMatchesBranch && !itemMatchesBranch) return;
 
               final qty = double.tryParse(itemMap['quantity'].toString()) ?? 0;
               final price = double.tryParse(itemMap['price'].toString()) ?? 0;
@@ -3925,10 +3955,12 @@ print("Fetched ${branches.length} branches for company $companyid");
                 .toLowerCase();
 
             final customer = (transaction['customer'] ?? '').toString().toLowerCase();
+            final staff = (transaction['staff'] ?? '').toString().toLowerCase();
 
             return item.contains(query) ||
                 receipt.contains(query) ||
-                customer.contains(query);
+                customer.contains(query) ||
+                staff.contains(query);
           }).toList();
         }
 
@@ -7006,17 +7038,28 @@ print("Fetched ${branches.length} branches for company $companyid");
       // SALES
       for (final doc in results[0].docs) {
         final d = doc.data();
-
         final items = d['items'] as Map<String, dynamic>? ?? {};
 
         for (final v in items.values) {
           if (v is! Map) continue;
-
           final m = Map<String, dynamic>.from(v);
 
+          final currentItemId = (m['itemid'] ?? m['itemId'] ?? m['id'] ?? '').toString().trim();
+          final currentBarcode = (m['barcode'] ?? '').toString().trim();
 
-          if ((m['itemid'] ?? '').toString().trim() != id.trim()) {
+          if (currentItemId != id.trim() && currentBarcode != id.trim()) {
             continue;
+          }
+
+          // Branch check for sales (handled in-memory if query filter was broad, 
+          // or just verifying if the doc filter matched).
+          if (branch != null) {
+            final docBranchId = d['branchId']?.toString().trim();
+            final itemBranchId = m['branchid']?.toString().trim();
+            if (docBranchId != branch && itemBranchId != branch) {
+               // continue; 
+               // Note: We might want to be inclusive for Sales Point staff here too.
+            }
           }
 
           // returned  sales
@@ -7112,9 +7155,10 @@ print("Fetched ${branches.length} branches for company $companyid");
 
           final m = Map<String, dynamic>.from(v);
 
-          final currentItemId = (m['itemid'] ?? '').toString().trim();
+          final currentItemId = (m['itemid'] ?? m['itemId'] ?? m['id'] ?? '').toString().trim();
+          final currentBarcode = (m['barcode'] ?? '').toString().trim();
 
-          if (currentItemId != id.trim()) {
+          if (currentItemId != id.trim() && currentBarcode != id.trim()) {
             continue;
           }
 
@@ -7201,7 +7245,10 @@ print("Fetched ${branches.length} branches for company $companyid");
 
           final m = Map<String, dynamic>.from(v);
 
-          if ((m['itemid'] ?? '').toString().trim() !=id.trim()) {
+          final currentItemId = (m['itemid'] ?? m['itemId'] ?? m['id'] ?? '').toString().trim();
+          final currentBarcode = (m['barcode'] ?? '').toString().trim();
+
+          if (currentItemId != id.trim() && currentBarcode != id.trim()) {
             continue;
           }
 
@@ -7249,7 +7296,10 @@ print("Fetched ${branches.length} branches for company $companyid");
 
           final m = Map<String, dynamic>.from(v);
 
-          if ((m['itemid'] ?? '').toString().trim() !=id.trim()) {
+          final currentItemId = (m['itemid'] ?? m['itemId'] ?? m['id'] ?? '').toString().trim();
+          final currentBarcode = (m['barcode'] ?? '').toString().trim();
+
+          if (currentItemId != id.trim() && currentBarcode != id.trim()) {
             continue;
           }
 
@@ -7291,7 +7341,10 @@ print("Fetched ${branches.length} branches for company $companyid");
 
           final m = Map<String, dynamic>.from(v);
 
-          if ((m['itemid'] ?? '').toString().trim() != id.trim()) {
+          final currentItemId = (m['itemid'] ?? m['itemId'] ?? m['id'] ?? '').toString().trim();
+          final currentBarcode = (m['barcode'] ?? '').toString().trim();
+
+          if (currentItemId != id.trim() && currentBarcode != id.trim()) {
             continue;
           }
 
@@ -7339,7 +7392,9 @@ print("Fetched ${branches.length} branches for company $companyid");
         for (final v in returnedItems.values) {
           if (v is! Map) continue;
           final m = Map<String, dynamic>.from(v);
-          if ((m['returned_itemid'] ?? '').toString().trim() != id.trim()) continue;
+          final currentItemId = (m['returned_itemid'] ?? '').toString().trim();
+          final currentBarcode = (m['returned_barcode'] ?? m['barcode'] ?? '').toString().trim();
+          if (currentItemId != id.trim() && currentBarcode != id.trim()) continue;
 
           entries.add(
             ItemHistoryEntry(
@@ -7939,8 +7994,10 @@ print("Fetched ${branches.length} branches for company $companyid");
 
       for (final item in items.values) {
         if (item is! Map<String, dynamic>) continue;
-        final docItemId = item['returned_itemid']?.toString().trim() ?? '';
-        if (docItemId == itemId.trim()) {
+        final docItemId = (item['returned_itemid'] ?? item['itemid'] ?? '').toString().trim();
+        final docBarcode = (item['returned_barcode'] ?? item['barcode'] ?? '').toString().trim();
+        
+        if (docItemId == itemId.trim() || docBarcode == itemId.trim()) {
           totalReturned += double.tryParse(
               item['returned_quantity']?.toString() ?? '0'
           ) ?? 0;
@@ -7983,16 +8040,18 @@ print("Fetched ${branches.length} branches for company $companyid");
           final branchData = itemsRoot[bId];
           if (branchData is! Map<String, dynamic>) continue;
 
-          for (final entry in branchData.entries) {
-            if (entry.value is! Map<String, dynamic>) continue;
+            for (final entry in branchData.entries) {
+              if (entry.value is! Map<String, dynamic>) continue;
 
-            final item = Map<String, dynamic>.from(entry.value);
+              final item = Map<String, dynamic>.from(entry.value);
 
-            final docItemId = (item['itemId'] ?? item['itemid'] ?? '').toString().trim();
-            if (docItemId != itemId.trim()) continue;
+              final docItemId = (item['itemId'] ?? item['itemid'] ?? item['id'] ?? '').toString().trim();
+              final docBarcode = (item['barcode'] ?? '').toString().trim();
+              
+              if (docItemId != itemId.trim() && docBarcode != itemId.trim()) continue;
 
-            balance += _dailyNet(item);
-          }
+              balance += _dailyNet(item);
+            }
         }
       }
 
