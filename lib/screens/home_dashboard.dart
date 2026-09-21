@@ -814,7 +814,7 @@ class FeedbackWidget extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Branch Stock Value',
+                    'Branch stock value',
                     style: TextStyle(
                       color: Colors.white70,
                       fontSize: 14,
@@ -864,13 +864,13 @@ class FeedbackWidget extends StatelessWidget {
                         final feedback = branchStockValue?[index];
 
                         return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          padding: const EdgeInsets.symmetric(vertical: 2),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Container(
-                                height: 36,
-                                width: 36,
+                                height: 30,
+                                width: 30,
                                 decoration: const BoxDecoration(
                                   color: Color(0xFF3A6FF8),
                                   shape: BoxShape.circle,
@@ -888,10 +888,11 @@ class FeedbackWidget extends StatelessWidget {
                                   children: [
                                     Expanded(
                                       child: Text(
-                                        feedback!.branchName!,
-                                        style: const TextStyle(
-                                          color: Colors.white,
+                                feedback!.branchName,
+                                        style: TextStyle(
+                                          color: Colors.white70,
                                           fontSize: 14,
+                                          fontWeight: FontWeight.w600,
                                         ),
                                       ),
                                     ),
@@ -899,9 +900,10 @@ class FeedbackWidget extends StatelessWidget {
                                     Text(
                                       "GHS ${NumberFormat('#,##0.00').format(feedback!.stockValue)}",
                                       //feedback!.stockValue.toStringAsFixed(2),
-                                      style: const TextStyle(
-                                        color: Colors.white60,
-                                        fontSize: 12,
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        //fontSize: 14,
+                                        //fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                   ],
@@ -1216,6 +1218,7 @@ class _PieChartWidgetState extends State<PieChartWidget> {
     );
   }
 }
+
 class MonthlyRevenueWidget extends StatefulWidget {
   final double cwidth;
 
@@ -1255,7 +1258,7 @@ class _MonthlyRevenueWidgetState extends State<MonthlyRevenueWidget> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Best 10 financial performing Items',
+              'Best 10 financial performing items',
               style: TextStyle(
                 color: Colors.white70,
                 fontSize: 14,
@@ -1271,14 +1274,16 @@ class _MonthlyRevenueWidgetState extends State<MonthlyRevenueWidget> {
                   'Item Name',
                   style: TextStyle(
                     color: Colors.white70,
-                    fontSize: 12,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 Text(
                   'Amount',
                   style: TextStyle(
                     color: Colors.white70,
-                    fontSize: 12,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
@@ -1333,21 +1338,24 @@ class _MonthlyRevenueWidgetState extends State<MonthlyRevenueWidget> {
                           MainAxisAlignment.spaceBetween,
                           children: [
                             Expanded(
-                              child: Text(
-                                item['item'] ?? '',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 14,
+                                child: Text(
+                                  (item['item'] ?? '').toString().isNotEmpty
+                                      ? '${(item['item'] ?? '').toString()[0].toUpperCase()}${(item['item'] ?? '').toString().substring(1).toLowerCase()}'
+                                      : '',
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                              ),
                             ),
                             Text(
                               " GHC ${NumberFormat('#,##0.00').format(item['sales_value'])}",
-                              //'GHC ${(item['sales_value'] as double).toStringAsFixed(2)}',
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: Colors.white70,
                                 fontSize: 14,
-                                fontWeight: FontWeight.w500,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ],
@@ -1408,7 +1416,7 @@ class _TopWidgetState extends State<TopWidget> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Best 10 qtys Performing Items',
+                  'Best 10 qtys performing items',
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: 14,
@@ -1425,14 +1433,16 @@ class _TopWidgetState extends State<TopWidget> {
                   'Item Name',
                   style: TextStyle(
                     color: Colors.white70,
-                    fontSize: 12,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 Text(
                   'Qty',
                   style: TextStyle(
                     color: Colors.white70,
-                    fontSize: 12,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
@@ -1486,20 +1496,22 @@ class _TopWidgetState extends State<TopWidget> {
                           children: [
                             Expanded(
                               child: Text(
-                                item['item'] ?? '',
+                                (item['item'] ?? '').toString().isNotEmpty
+                                    ? '${(item['item'] ?? '').toString()[0].toUpperCase()}${(item['item'] ?? '').toString().substring(1).toLowerCase()}'
+                                    : '',
                                 style: const TextStyle(
-                                  color: Colors.white,
+                                  color: Colors.white70,
                                   fontSize: 14,
+                                  fontWeight: FontWeight.w600,
                                 ),
                                 overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
+                              ),                            ),
                             Text(
                             " ${NumberFormat('#,##0').format(item['sales_qty'])}",
-                              style: const TextStyle(
-                                color: Colors.white,
+                              style: TextStyle(
+                                color: Colors.white70,
                                 fontSize: 14,
-                                fontWeight: FontWeight.w500,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
                           ],
@@ -1713,6 +1725,7 @@ class _BranchSalesState extends State<BranchSales> {
     );
   }
 }
+
 class CsatWidget extends StatelessWidget {
   final double cwidth;
   const CsatWidget({super.key, required this.cwidth});
@@ -2143,190 +2156,6 @@ class _MomoKpiWidgetState extends State<MomoKpiWidget>
   }
 }
 
-// class MomoKpiWidget extends StatefulWidget {
-//   final double cwidth;
-//   final double todayAmount;
-//   final double yesterdayAmount;
-//
-//   const MomoKpiWidget({
-//     super.key,
-//     required this.cwidth,
-//     required this.todayAmount,
-//     required this.yesterdayAmount,
-//   });
-//
-//   @override
-//   State<MomoKpiWidget> createState() => _MomoKpiWidgetState();
-// }
-//
-// class _MomoKpiWidgetState extends State<MomoKpiWidget>
-//     with SingleTickerProviderStateMixin {
-//   late AnimationController _controller;
-//   late Animation<double> _amountAnim;
-//   String companyId = '';
-//
-//   @override
-//   void initState() {
-//     super.initState();
-//
-//
-//
-//     _controller = AnimationController(
-//       vsync: this,
-//       duration: const Duration(milliseconds: 1200),
-//     );
-//
-//     _amountAnim = Tween<double>(
-//       begin: 0,
-//       end: widget.todayAmount,
-//     ).animate(CurvedAnimation(
-//       parent: _controller,
-//       curve: Curves.easeOut,
-//     ));
-//
-//     _controller.forward();
-//     WidgetsFlutterBinding.ensureInitialized().addPostFrameCallback((_) {
-//       final datafeed = context.read<Datafeed>();
-//       companyId = datafeed.companyid;
-//
-//       //();
-//     });
-//
-//   }
-//
-//   double get difference => widget.todayAmount - widget.yesterdayAmount;
-//
-//   double get percentage =>
-//       widget.yesterdayAmount == 0
-//           ? 0
-//           : (difference / widget.yesterdayAmount) * 100;
-//
-//   bool get isIncrease => difference >= 0;
-//
-//   Color get trendColor => isIncrease ? Colors.greenAccent : Colors.redAccent;
-//
-//   IconData get trendIcon =>
-//       isIncrease ? Icons.trending_up : Icons.trending_down;
-//
-//   String get percentLabel =>
-//       "${isIncrease ? '+' : '-'}${percentage.abs().toStringAsFixed(1)}%";
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return Container(
-//       width: widget.cwidth,
-//       height: 235,
-//       padding: const EdgeInsets.all(16),
-//       decoration: BoxDecoration(
-//         color: const Color(0xFF182232),
-//         borderRadius: BorderRadius.circular(12),
-//         boxShadow: [
-//           BoxShadow(
-//             color: Colors.black.withOpacity(0.15),
-//             blurRadius: 10,
-//             offset: const Offset(0, 3),
-//           ),
-//         ],
-//       ),
-//       child: Column(
-//         crossAxisAlignment: CrossAxisAlignment.start,
-//         children: [
-//
-//           Row(
-//             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-//             children: [
-//               Text(
-//                 "Total MOMO",
-//                 style: TextStyle(
-//                   color: Colors.white70,
-//                   fontSize: 14,
-//                   fontWeight: FontWeight.w600,
-//                 ),
-//               ),
-//               Container(
-//                 decoration: BoxDecoration(
-//                   color: trendColor.withOpacity(0.2),
-//                   borderRadius: BorderRadius.all(Radius.circular(4))
-//                 ),
-//                   child: Padding(
-//                     padding: const EdgeInsets.all(4.0),
-//                     child: Icon(Icons.phone_android, color: trendColor, size: 16,),
-//                   )
-//               ),
-//             ],
-//           ),
-//
-//           const SizedBox(height: 14),
-//
-//           AnimatedBuilder(
-//             animation: _amountAnim,
-//             builder: (context, child) {
-//               return FittedBox(
-//                 child: Text(
-//                   "GHS ${_amountAnim.value.toStringAsFixed(2)}",
-//                   style: const TextStyle(
-//                     fontSize: 22,
-//                     fontWeight: FontWeight.bold,
-//                     color: Colors.white,
-//                   ),
-//                 ),
-//               );
-//             },
-//           ),
-//
-//           const SizedBox(height: 6),
-//
-//           const Text(
-//             "Today",
-//             style: TextStyle(fontSize: 12, color: Colors.white54),
-//           ),
-//
-//           const Spacer(),
-//
-//
-//           Row(
-//             children: [
-//               Icon(trendIcon, color: trendColor, size: 18),
-//               const SizedBox(width: 4),
-//               Text(
-//                 percentLabel,
-//                 style: TextStyle(
-//                   color: trendColor,
-//                   fontSize: 13,
-//                   fontWeight: FontWeight.w600,
-//                 ),
-//               ),
-//               const SizedBox(width: 6),
-//               const Text(
-//                 "vs yesterday",
-//                 style: TextStyle(fontSize: 11, color: Colors.white60),
-//               ),
-//             ],
-//           ),
-//
-//           const SizedBox(height: 10),
-//
-//
-//           ClipRRect(
-//             borderRadius: BorderRadius.circular(6),
-//             child: LinearProgressIndicator(
-//               minHeight: 6,
-//               value: min(percentage.abs() / 100, 1),
-//               backgroundColor: Colors.white12,
-//               valueColor: AlwaysStoppedAnimation(trendColor),
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-//
-//   @override
-//   void dispose() {
-//     _controller.dispose();
-//     super.dispose();
-//   }
-// }
 
 Widget _statCard({
   required String title,

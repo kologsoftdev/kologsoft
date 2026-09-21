@@ -2474,6 +2474,7 @@ return Number.isFinite(parsed) ? parsed : 0;
   const getItemdiscount = (itemData) => ( toNumber(itemData.discount ?? itemData.Discount ?? 0));
 
   const getItemModeQty = (itemData) => (toNumber(itemData.modeqty ?? itemData.modeQty ?? itemData.mode_qty ?? itemData.cartonqty ?? itemData.cartonQty ?? 0));
+
   const getBoxQtyFromDoc = (docData) => {
     const direct = toNumber(docData?.boxqty ?? docData?.boxQty ?? 0);
     if (direct > 0) return direct;
