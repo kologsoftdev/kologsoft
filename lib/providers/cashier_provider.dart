@@ -345,16 +345,16 @@ class CashierProvider extends Datafeed {
   }
 
  incrementMomoDebtPayment({
-    required amount,
+    required amount,required paymentmethod
   }) async {
     if (companyid.isEmpty || branchid.isEmpty || amount == 0) {
       return;
     }
 
     await db .collection("dashbaord_stats").doc(companyid).update({
-      "companydebtpay_momo":  FieldValue.increment(amount),
+      "companydebtpay_$paymentmethod":  FieldValue.increment(amount),
 
-      "branchsales.$branchid.debtpay_momo": FieldValue.increment(amount),
+      "branchsales.$branchid.debtpay_$paymentmethod": FieldValue.increment(amount),
     });
   }
 
@@ -446,6 +446,7 @@ class CashierProvider extends Datafeed {
       Map<String, dynamic> paymentdata) async {
     try {
       final oldAmount = paymentdata['oldamount'] as double;
+      final paymentmethod = paymentdata['paymentmethod'];
       await db.runTransaction((transaction) async {
         final customerRef = db.collection('customers').doc(paymentdata['customerid']);
         final paymentRef = db.collection('debtpayment').doc(paymentdata['id']);
@@ -469,6 +470,8 @@ class CashierProvider extends Datafeed {
               runningbalance: debtpayments[paymentIndex].runningbalance - difference,
             );
           }
+          incrementMomoDebtPayment(amount: difference,paymentmethod:paymentmethod);
+
         }
       });
 
@@ -536,10 +539,7 @@ class CashierProvider extends Datafeed {
     return debtorlist.fold(0, (sum, debtor) => sum + debtor.amountpaid);
   }
 
-  Future<void> deletePayment({
-    required Payment payment,
-    required String debtorId,
-  }) async {
+  Future<void> deletePayment({required Payment payment, required String debtorId,}) async {
 
     try {
       deletingPayments.add(payment.id);
@@ -559,11 +559,11 @@ class CashierProvider extends Datafeed {
 
         double newPaid = currentPaid - payment.amount;
 
-
-        transaction.update(debtorRef, {
+        await transaction.update(debtorRef, {
           'amountpaid': newPaid,
         });
-        transaction.delete(paymentRef);
+        await incrementMomoDebtPayment(amount: -payment.amount, paymentmethod: payment.paymentMethod);
+        await transaction.delete(paymentRef);
       });
 
       debtpayments.removeWhere((p) => p.id == payment.id);

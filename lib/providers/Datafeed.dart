@@ -399,6 +399,10 @@ class Datafeed extends ChangeNotifier {
       double companyopening_credit_bal = 0.0;
       double companyDiscount = 0.0;
       double companydebtpay_momo = 0.0;
+      double companydebtpay_cash = 0.0;
+      double companydebtpay_card = 0.0;
+      double companydebtpay_banktransfer = 0.0;
+      double totaldebtpayment = 0.0;
 
       // Current branch payment totals
       double branchCash = 0.0;
@@ -411,6 +415,10 @@ class Datafeed extends ChangeNotifier {
        disCount = (data['company_Discount'] as num?)?.toDouble() ?? 0.0;
      double branchDiscount = 0.0;
      double branchdebtpay_momo = 0.0;
+     double branchdebtpay_cash = 0.0;
+     double branchdebtpay_card = 0.0;
+     double branchdebtpay_banktransfer = 0.0;
+     double branchdebtpay = 0.0;
 
       for (final entry in branchSales.entries) {
         if (entry.value is! Map) continue;
@@ -428,10 +436,13 @@ class Datafeed extends ChangeNotifier {
         final card =  (branchData['card'] as num?)?.toDouble() ??  0.0;
         final credit = (branchData['credit'] as num?) ?.toDouble() ??0.0;
         final momo =   (branchData['momo'] as num?) ?.toDouble() ?? 0.0;
-        final bankTransfer = (branchData['bank transfer'] as num?) ?.toDouble() ??  0.0;
+        final bankTransfer = (branchData['bank transfer'] as num?) ?.toDouble() ??  (branchData['bank_transfer'] as num?) ?.toDouble()?? 0.0;
         final opening_credit_bal = (branchData['opening_credit_bal'] as num?) ?.toDouble() ??  0.0;
         final discount = (branchData['discount'] as num?) ?.toDouble() ??  0.0;
         final debtpay_momo = (branchData['debtpay_momo'] as num?) ?.toDouble() ??  0.0;
+        final debtpay_cash = (branchData['debtpay_cash'] as num?) ?.toDouble() ??  0.0;
+        final debtpay_card = (branchData['debtpay_card'] as num?) ?.toDouble() ??  0.0;
+        final debtpay_banktransfer = (branchData['debtpay_bank transfer'] as num?) ?.toDouble() ?? (branchData['debtpay_bank_transfer'] as num?) ?.toDouble()??  0.0;
 
         // Company totals
         companyCash += cash;
@@ -442,6 +453,7 @@ class Datafeed extends ChangeNotifier {
         companyopening_credit_bal += opening_credit_bal;
         companyDiscount += discount;
         companydebtpay_momo+=debtpay_momo;
+        totaldebtpayment+=(debtpay_momo+debtpay_cash+debtpay_card+debtpay_banktransfer);
         if (
         entry.key.toLowerCase() ==
             branchid.toLowerCase()
@@ -456,6 +468,7 @@ class Datafeed extends ChangeNotifier {
           branchopening_credit_bal = opening_credit_bal;
           branchDiscount = discount;
           branchdebtpay_momo=debtpay_momo;
+          branchdebtpay=(debtpay_momo+debtpay_cash+debtpay_card+debtpay_banktransfer);
         }
       }
 
@@ -524,12 +537,12 @@ class Datafeed extends ChangeNotifier {
         branchStockValue:branchStockValue,
         companyCash:companyCash,
         companyCard:companyCard,
-        companyCredit:companyCredit,
+        companyCredit:(companyCredit-totaldebtpayment),
         companyMomo:companyMomo,
         companyBankTransfer:companyBankTransfer,
         branchCash: branchCash,
         branchCard: branchCard,
-        branchCredit: branchCredit,
+        branchCredit: (branchCredit-branchdebtpay),
         branchMomo:branchMomo,
         branchBankTransfer:branchBankTransfer,
         companyopening_credit_bal:companyopening_credit_bal,
@@ -539,148 +552,11 @@ class Datafeed extends ChangeNotifier {
         branchDiscount: branchDiscount,
         companydebtpay_momo:companydebtpay_momo,
         branchdebtpay_momo:branchdebtpay_momo,
-
       );
+
     });
   }
 
-
-  // Stream<DashboardStats> dashboardStatsStream() {
-  //   if (companyid.isEmpty) {
-  //     return Stream.value(
-  //       DashboardStats(
-  //         companySalesValue: 0,
-  //         companyExpenseValue: 0,
-  //         branchSalesValue: 0,
-  //         branchExpenseValue: 0,
-  //       ),
-  //     );
-  //   }
-  //
-  //   return db
-  //       .collection('dashbaord_stats')
-  //       .doc(companyid)
-  //       .snapshots()
-  //       .map((snapshot) {
-  //     if (!snapshot.exists || snapshot.data() == null) {
-  //       return DashboardStats(
-  //         companySalesValue: 0,
-  //         companyExpenseValue: 0,
-  //         branchSalesValue: 0,
-  //         branchExpenseValue: 0,
-  //       );
-  //     }
-  //
-  //     final data = snapshot.data()!;
-  //
-  //     // =========================================================
-  //     // BRANCH SALES
-  //     // =========================================================
-  //
-  //     final branchSales =
-  //     Map<String, dynamic>.from(data['branchsales'] ?? {});
-  //
-  //     double companySalesValue = 0.0;
-  //     double branchSalesValue = 0.0;
-  //
-  //     for (final entry in branchSales.entries) {
-  //       if (entry.value is! Map) continue;
-  //
-  //       final branchData =
-  //       Map<String, dynamic>.from(entry.value as Map);
-  //
-  //       final value =
-  //           (branchData['sales_value'] as num?)?.toDouble() ?? 0.0;
-  //
-  //       companySalesValue += value;
-  //
-  //       if (entry.key.toLowerCase() == branchid.toLowerCase()) {
-  //         branchSalesValue = value;
-  //       }
-  //     }
-  //
-  //     // =========================================================
-  //     // BRANCH EXPENSE
-  //     // =========================================================
-  //
-  //     final branchExpenses =
-  //     Map<String, dynamic>.from(data['branchexpense'] ?? {});
-  //
-  //     double companyExpenseValue = 0.0;
-  //     double branchExpenseValue = 0.0;
-  //
-  //     for (final entry in branchExpenses.entries) {
-  //       if (entry.value is! Map) continue;
-  //
-  //       final branchData =
-  //       Map<String, dynamic>.from(entry.value as Map);
-  //
-  //       final value =
-  //           (branchData['expense_value'] as num?)?.toDouble() ?? 0.0;
-  //
-  //       companyExpenseValue += value;
-  //
-  //       if (entry.key.toLowerCase() == branchid.toLowerCase()) {
-  //         branchExpenseValue = value;
-  //       }
-  //     }
-  //
-  //     return DashboardStats(
-  //       companySalesValue: companySalesValue,
-  //       companyExpenseValue: companyExpenseValue,
-  //       branchSalesValue: branchSalesValue,
-  //       branchExpenseValue: branchExpenseValue,
-  //     );
-  //   });
-  // }
-
-        // Stream<DashboardStats> dashboardStatsStream() {
-        //   if (companyid.isEmpty) {
-        //     return Stream.value(
-        //       DashboardStats(
-        //         companySalesValue: 0,
-        //         companyExpenseValue: 0,
-        //         branchSalesValue: 0,
-        //         branchExpenseValue: 0,
-        //       ),
-        //     );
-        //   }
-        //   return db.collection('dashbaord_stats').doc(companyid).snapshots()
-        //       .map((snapshot) {
-        //     if (!snapshot.exists || snapshot.data() == null) {
-        //       return DashboardStats(
-        //         companySalesValue: 0,
-        //         companyExpenseValue: 0,
-        //         branchSalesValue: 0,
-        //         branchExpenseValue: 0,
-        //       );
-        //     }
-        //
-        //     final data = snapshot.data()!;
-        //
-        //     final companySales = (data['companysales_value'] as num?)?.toDouble() ?? 0.0;
-        //
-        //     final companyExpense = (data['expense_total'] as num?)?.toDouble() ?? 0.0;
-        //
-        //     final branchSales = (Map<String, dynamic>.from(data['branchSummary'] ?? {})[branchid]
-        //         ?['branchsales_value'] as num?)
-        //             ?.toDouble() ??
-        //             0.0;
-        //
-        //     final branchExpense =
-        //         (Map<String, dynamic>.from(data['branchexpense'] ?? {})[branchid]
-        //         ?['expense_value'] as num?)
-        //             ?.toDouble() ??
-        //             0.0;
-        //
-        //     return DashboardStats(
-        //       companySalesValue: companySales,
-        //       companyExpenseValue: companyExpense,
-        //       branchSalesValue: branchSales,
-        //       branchExpenseValue: branchExpense,
-        //     );
-        //   });
-        // }
 
   List<String> normalizeModes(Map<String, dynamic>? modes) {
     if (modes == null || modes.isEmpty) {

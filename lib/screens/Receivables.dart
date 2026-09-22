@@ -882,9 +882,7 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
       };
 
       await provider.db.collection('sms_logs').add(smsRecord);
-      if (paymentMethodStore == 'momo') {
-       await provider.incrementMomoDebtPayment(amount: payment.amount);
-      }
+
         if (paymentMethodStore == 'momo' && momoTransactionIds != null) {
           for (final transactionId in momoTransactionIds.keys) {
             final query = await provider.db.collection('momo')
@@ -1024,7 +1022,7 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Amount
-                    const Text('Amount to Pay *', style: TextStyle(color: Colors.grey)),
+                    const Text('Amount to Pay *', style: TextStyle(color: Colors.grey,fontSize: 12)),
                     TextFormField(
                       controller: _amountController,
                       keyboardType: TextInputType.numberWithOptions(decimal: true),
@@ -1053,9 +1051,9 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 4),
                     // Payment Method
-                    const Text('Payment Method *', style: TextStyle(color: Colors.grey)),
+                    const Text('Payment Method *', style: TextStyle(color: Colors.grey,fontSize: 12)),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
@@ -1116,10 +1114,11 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 5),
        // "hubtel" or "merchant"
 
         if (paymentMethod.toLowerCase() == 'momo') ...[
+          const SizedBox(height: 5),
         // Select Network
         Container(
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -1171,9 +1170,9 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
         ),
         ),
 
-        const SizedBox(height: 16),
+        const SizedBox(height: 10),
 
-        // ✅ New dropdown for Hubtel vs Merchant
+        // New dropdown for Hubtel vs Merchant
         Container(
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
@@ -1212,14 +1211,16 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
         },
         ),
         ),
+          const SizedBox(height: 5),
         ],
 
-// ✅ Conditionally show transaction fields only if Merchant is selected
+//  Conditionally show transaction fields only if Merchant is selected
         if (paymentMethod.toLowerCase() == 'momo' && momoType == 'merchant') ...[
+          const SizedBox(height: 5),
         _buildMomoTransactionFields(),
         ],
                     if (paymentMethod.toLowerCase() == 'momo' && momoType == 'hubtel') ...[
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 5),
                       TextFormField(
                         controller: _contactController,
                         style: TextStyle(color: Colors.white70),
@@ -1292,11 +1293,11 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                       ),
 
                     ],
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 5),
                     _buildLinkedAccountDropdown(),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 5),
                     // Date
-                    const Text('Payment Date *', style: TextStyle(color: Colors.grey)),
+                    const Text('Payment Date *', style: TextStyle(color: Colors.grey,fontSize: 12)),
                     InkWell(
                       onTap: () async {
                         DateTime? picked = await showDatePicker(
@@ -1337,11 +1338,11 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 5),
 
                     // Note/Reference
-                    const Text('Narration', style: TextStyle(color: Colors.grey)),
-                    const SizedBox(height: 8),
+                    const Text('Narration', style: TextStyle(color: Colors.grey,fontSize: 12)),
+
                     TextFormField(
                       controller: _referenceController,
                       style: const TextStyle(color: Colors.white),
@@ -1351,9 +1352,9 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                         filled: true,
                         fillColor: const Color(0xFF1E3A5F),
                       ),
-                      maxLines: 3,
+                      maxLines: 2,
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 15),
 
                     // Submit Button
                     Center(
