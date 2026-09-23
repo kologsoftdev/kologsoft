@@ -1387,9 +1387,9 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                               return null;
                             },
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 5),
                           // Payment Method
-                          const Text('Payment Method *', style: TextStyle(color: Colors.grey)),
+                          const Text('Payment Method *', style: TextStyle(color: Colors.grey,fontSize: 12)),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             decoration: BoxDecoration(
@@ -1450,7 +1450,7 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                               ),
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 5),
                           // "hubtel" or "merchant"
 
                           if (paymentMethod.toLowerCase() == 'momo') ...[
@@ -1505,7 +1505,7 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                               ),
                             ),
 
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 5),
 
                             // ✅ New dropdown for Hubtel vs Merchant
                             Container(
@@ -1553,7 +1553,7 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                             _buildMomoTransactionFields(),
                           ],
                           if (paymentMethod.toLowerCase() == 'momo' && momoType == 'hubtel') ...[
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 5),
                             TextFormField(
                               controller: _contactController,
                               style: TextStyle(color: Colors.white70),
@@ -1626,9 +1626,9 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                             ),
 
                           ],
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 5),
                           _buildLinkedAccountDropdown(),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 5),
                           // Date
                           const Text('Payment Date *', style: TextStyle(color: Colors.grey)),
                           InkWell(
@@ -1671,7 +1671,7 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                               ),
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 5),
 
                           // Note/Reference
                           const Text('Narration', style: TextStyle(color: Colors.grey)),
@@ -1687,7 +1687,7 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                             ),
                             maxLines: 3,
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 15),
 
                           // Submit Button
                           Center(
