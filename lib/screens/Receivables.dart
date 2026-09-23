@@ -392,8 +392,10 @@ class DebtorCard extends StatelessWidget {
                 children: [
                   _buildAmountColumn('Total Debt', 'GHS ${NumberFormat('#,##0.00').format(debtor.creditBalance)}', Colors.white),
                   _buildAmountColumn('Amount Paid', 'GHS ${NumberFormat('#,##0.00').format(debtor.amountpaid)}', Colors.white),
-                  _buildAmountColumn('Balance', 'GHS ${NumberFormat('#,##0.00').format(debtor.balance)}', Colors.orange.shade400),
-                ],
+                  _buildAmountColumn('Balance', debtor.balance < 0 ? '(GHS ${NumberFormat('#,##0.00').format(debtor.balance.abs())})'
+                        : 'GHS ${NumberFormat('#,##0.00').format(debtor.balance)}',
+                    Colors.orange.shade400,
+                  ),                ],
               ),
               const SizedBox(height: 12),
               Row(
@@ -1701,7 +1703,13 @@ class DebtorDetailsDialog extends StatelessWidget {
                         const Divider(color: Colors.grey),
                         _financialRow('Amount Paid', 'GHS ${NumberFormat('#,##0.00').format(debtor.amountpaid)}', Colors.white),
                         const Divider(color: Colors.grey),
-                        _financialRow('Balance', 'GHS ${NumberFormat('#,##0.00').format(debtor.balance)}', Colors.orange, bold: true),
+                        _financialRow(
+                          'Balance',
+                          debtor.balance < 0
+                              ? '(GHS ${NumberFormat('#,##0.00').format(debtor.balance.abs())})'
+                              : 'GHS ${NumberFormat('#,##0.00').format(debtor.balance)}',
+                          Colors.orange,bold: true,
+                        ),
                       ],
                     ),
                   ),
@@ -2078,7 +2086,9 @@ class DebtorDetailsDialog extends StatelessWidget {
               ),
               _buildSummaryCard(
                 "Balance",
-                "GHS ${currentBalance.toStringAsFixed(2)}",
+                  currentBalance<0
+                      ? "(GHS ${currentBalance.abs().toStringAsFixed(2)})"
+                      :"GHS ${currentBalance.toStringAsFixed(2)}",
                 currentBalance > 0 ? PdfColors.orange700 : PdfColors.green700,
               ),
             ],
@@ -2159,6 +2169,9 @@ class DebtorDetailsDialog extends StatelessWidget {
                     _buildTableCell(DateFormat('yyyy-MM-dd').format(payment.createdat), flex: 2),
                     _buildTableCell(payment.amount.toStringAsFixed(2), flex: 2, isAmount: true),
                     _buildTableCell(_getPaymentMethodDisplay(payment.paymentMethod), flex: 2),
+                    runningBalance < 0
+                        ? _buildTableCell("(${runningBalance.abs().toStringAsFixed(2)})", flex: 2, isAmount: true)
+                        :
                     _buildTableCell(runningBalance.toStringAsFixed(2), flex: 2, isAmount: true),
                     _buildTableCell(payment.reference.isNotEmpty ? payment.reference : "-", flex: 3),
                   ],

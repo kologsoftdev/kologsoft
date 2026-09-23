@@ -327,13 +327,11 @@ class CashierProvider extends Datafeed {
       notifyListeners();
     }
   }
-  loadcustomers() async {
+  loadcustomers(String contact) async {
    try {
       await getdata();
       Query query = db
-          .collection('customers').where('companyid', isEqualTo: companyid);
-          //.where('customertype', isEqualTo: "Credit")
-          //.where('creditBalance', isNotEqualTo: 0);
+          .collection('customers').where('companyid', isEqualTo: companyid).where('contact', isEqualTo: contact).limit(1);
       final snapshot = await query.get();
      return debtorlist = snapshot.docs.map((doc) => Debtor.fromFirestore(doc)).toList();
 

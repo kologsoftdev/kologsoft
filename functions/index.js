@@ -3186,10 +3186,7 @@ if (
           // Defer sale updates to chunked commit path below (avoid transaction)
         }
 
-        
 
-        // Replace transactional finalization with chunked commits below
-     
 
       // perform chunked writes based on perItemStatus and aggregated data
       if (!overallApproved) {
@@ -5366,517 +5363,1646 @@ exports.syncDamageItemsToItemsreg = onDocumentWritten(
 //});
 
 // Handles CREATE, UPDATE, and DELETE operations with proper data source fallbacks
-exports.syncSalesReturnToItemsreg = onDocumentWritten("salesreturn/{returnId}", async (event) => {
+exports.syncSalesToItemsregStockout = onDocumentWritten("sales/{saleId}", async (event) => {
   const before = event.data?.before ? event.data.before.data() : null;
   const after = event.data?.after ? event.data.after.data() : null;
-  const returnId = event.params.returnId;
+  const saleId = event.params.saleId;
 
-  const toNumber = (value) => {
-    if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
-    if (typeof value === 'string') {
-      const parsed = parseFloat(value.trim());
-      return Number.isFinite(parsed) ? parsed : 0;
-    }
-    return 0;
+  const toNumber = (value) => {const parsed = parseFloat(value);
+return Number.isFinite(parsed) ? parsed : 0;
   };
 
-  const resolveUpdatedBy = (docData) => (
-    docData?.returned_updatedby ||
-    docData?.returned_updatedBy ||
-    docData?.updatedBy ||
-    docData?.updatedby ||
-    docData?.createdBy ||
-    docData?.createdby ||
-    "system"
-  );
+  const getItemQuantity = (itemData) => (toNumber(itemData.quantity ?? itemData.qty ?? itemData.qnty ?? 0));
 
-  const resolveItemId = (itemData, itemKey) => (
-    itemData?.returned_itemid ||
-    itemData?.returned_itemId ||
-    itemData?.itemid ||
-    itemData?.itemId ||
-    itemData?.item_id ||
-    itemData?.id ||
-    itemData?.productId ||
-    itemKey
-  );
+  const getItemPieces = (itemData) => ( toNumber(itemData.totalpieces ?? itemData.totalPieces ?? itemData.pieces ?? 0));
 
-  
-  const resolveItemBranchId = (docData, itemData) => (
-    itemData?.returned_branchid ||
-    itemData?.returned_branchId ||
-    docData?.returned_branchid ||
-    docData?.returned_branchId ||
-    null
-  );
+  const getItemdiscount = (itemData) => ( toNumber(itemData.discount ?? itemData.Discount ?? 0));
 
-  const resolveItemBranchName = (docData, itemData, branchId) => (
-    itemData?.returned_branchname ||
-    itemData?.returned_branchName ||
-    docData?.returned_branchname ||
-    docData?.returned_branchName ||
-    branchId
-  );
-
-  const resolveReturnAmount = (itemData) => {
-    const explicitAmount = toNumber(
-      itemData?.returned_totalamount ??
-      itemData?.returned_amount ??
-      itemData?.totalamount ??
-      itemData?.amount ??
-      0
-    );
-
-    if (explicitAmount > 0) return explicitAmount;
-
-    const grossAmount = toNumber(itemData?.returned_grosstotalamount ?? itemData?.grossamount ?? 0);
-    const lineDiscount = toNumber(itemData?.returned_discount ?? itemData?.discount ?? 0);
-    if (grossAmount > 0) return Math.max(grossAmount - lineDiscount, 0);
-
-    const returnedQty = toNumber(itemData?.returned_quantity ?? itemData?.returned_qty ?? 0);
-    const returnedUnitPrice = toNumber(
-      itemData?.returned_price ??
-      itemData?.price ??
-      itemData?.unitprice ??
-      itemData?.unitPrice ??
-      0
-    );
-
-    return returnedQty > 0 && returnedUnitPrice > 0 ? returnedQty * returnedUnitPrice : 0;
-  };
-
-  const resolveReturnProfit = (itemData) => {
-    const explicitProfit = toNumber(
-      itemData?.returned_profit ??
-      itemData?.returnedProfit ??
-      itemData?.profit ??
-      0
-    );
-
-    if (explicitProfit !== 0) return explicitProfit;
-
-    const returnedQty = toNumber(itemData?.returned_quantity ?? itemData?.returned_qty ?? 0);
-    const returnedPieces = toNumber(
-      itemData?.returned_totalpieces ??
-      itemData?.returned_pieces ??
-      itemData?.returnedpieces ??
-      itemData?.returnedPieces ??
-      0
-    );
-    const returnedCost = toNumber(itemData?.returned_cp ?? itemData?.cp ?? 0);
-    const lineAmount = resolveReturnAmount(itemData);
-    const costUnits = returnedPieces > 0 ? returnedPieces : returnedQty;
-
-    return returnedCost > 0 && costUnits > 0 ? lineAmount - (costUnits * returnedCost) : 0;
-  };
-
-  const normalizeReturnItems = (docData) => {
-    if (!docData) return {};
-    const rawItems = docData.returned_items || docData.items;
-    const normalized = {};
-
-    if (Array.isArray(rawItems)) {
-      rawItems.forEach((itemData, index) => {
-        if (!itemData || typeof itemData !== "object") return;
-
-        const itemId = resolveItemId(itemData, `item_${index}`);
-        if (!itemId) return;
-
-        const explicitReturnedPieces = toNumber(
-          itemData.returned_totalpieces ??
-          itemData.returned_pieces ??
-          itemData.returnedpieces ??
-          itemData.returnedPieces ??
-          0
-        );
-        const returnedQty = toNumber(itemData.returned_quantity ?? itemData.returned_qty ?? 0);
-        const returnedModeQty = toNumber(itemData.returned_modeqty ?? itemData.returned_modeQty ?? 0);
-        const computedReturnedPieces = returnedQty * returnedModeQty;
-        const returnedpieces = computedReturnedPieces > 0 ? computedReturnedPieces : explicitReturnedPieces;
-
-        const branchId = resolveItemBranchId(docData, itemData);
-        const branchName = resolveItemBranchName(docData, itemData, branchId);
-        const itemName=(itemData.returned_item);
-        const itemBarcode=(itemData.returned_barcode);
-        const companyid=(docData.returned_companyid);
-        const returnGrossAmount=(docData.returned_grosstotalamount);
-        const return_grossdiscount=(docData.returned_discount);
-        const returnPrice=(docData.returned_price);
-        const returnstaff=(docData.returned_staff);
-        const returned_transMode=(docData.returned_transMode);
-        const returned_discount = toNumber(
-          itemData.returned_discount ??
-          itemData.returned_discountAmount ??
-          docData.returned_discount ??
-          0
-        );
-        const returnAmount = resolveReturnAmount(itemData);
-        const returned_profit = resolveReturnProfit(itemData);
-        const current = normalized[itemId] || {
-          itemId,
-          returnedpieces: 0,
-          branchId,
-          branchName,
-          itemBarcode,
-          itemName,
-          companyid,
-          returnAmount:0,
-          returnPrice,
-          returnstaff,
-          returned_transMode,
-          returned_discount:0,
-          returned_profit:0,
-          return_grossdiscount,
-        };
-        current.returnedpieces += returnedpieces;
-        current.returned_discount += returned_discount;
-        current.returnAmount += returnAmount;
-        current.returned_profit += returned_profit;
-        if (!current.branchId && branchId) current.branchId = branchId;
-        if (!current.branchName && branchName) current.branchName = branchName;
-        normalized[itemId] = current;
-      });
-    } else if (rawItems && typeof rawItems === "object") {
-      Object.entries(rawItems).forEach(([itemKey, itemData]) => {
-        if (!itemData || typeof itemData !== "object") return;
-
-        const itemId = resolveItemId(itemData, itemKey);
-        if (!itemId) return;
-
-        const explicitReturnedPieces = toNumber(
-          itemData.returned_totalpieces ??
-          itemData.returned_pieces ??
-          itemData.returnedpieces ??
-          itemData.returnedPieces ??
-          0
-        );
-        const returnedQty = toNumber(itemData.returned_quantity ?? itemData.returned_qty ?? 0);
-        const returnedModeQty = toNumber(itemData.returned_modeqty ?? itemData.returned_modeQty ?? 0);
-        const computedReturnedPieces = returnedQty * returnedModeQty;
-        const returnedpieces = computedReturnedPieces > 0 ? computedReturnedPieces : explicitReturnedPieces;
-
-        const branchId = resolveItemBranchId(docData, itemData);
-        const branchName = resolveItemBranchName(docData, itemData, branchId);
-         const itemName=(itemData.returned_item);
-        const itemBarcode=(itemData.returned_barcode);
-        const companyid=(docData.returned_companyid);
-        const returnGrossAmount=(docData.returned_grosstotalamount);
-        const return_grossdiscount=(docData.return_grossdiscount);
-        const returnPrice=(docData.returned_price);
-        const returnstaff=(docData.returned_staff);
-        const returned_transMode=(docData.returned_transMode);
-       const returned_discount = toNumber(itemData.returned_discount ?? itemData.returned_discountAmount ?? docData.returned_discount ?? 0
-        );
-       const returnAmount = resolveReturnAmount(itemData);
-      const returned_profit = resolveReturnProfit(itemData);
-
-        const current = normalized[itemId] || {
-          itemId,
-          returnedpieces: 0,
-          branchId,
-          branchName,
-          itemBarcode,
-          itemName,
-          companyid,
-          returnAmount:0,
-          returnPrice,
-          returnstaff,
-          returned_transMode,
-          returned_discount:0,
-          returned_profit:0,
-          return_grossdiscount,
-        };
-        current.returnedpieces += returnedpieces;
-        current.returned_discount += returned_discount;
-        current.returnAmount += returnAmount;
-        current.returned_profit += returned_profit;
-        if (!current.branchId && branchId) current.branchId = branchId;
-        if (!current.branchName && branchName) current.branchName = branchName;
-        normalized[itemId] = current;
-      });
-    }
-
-    return normalized;
-  };
+  const getItemModeQty = (itemData) => (toNumber(itemData.modeqty ?? itemData.modeQty ?? itemData.mode_qty ?? itemData.cartonqty ?? itemData.cartonQty ?? 0));
+  const getBoxQtyFromDoc = (docData) => {
+    const direct = toNumber(docData?.boxqty ?? docData?.boxQty ?? 0);
+    if (direct > 0) return direct;
+    const cartonQty = toNumber(docData?.modes?.carton?.qty ?? 0);
+    const singleQty = toNumber(docData?.modes?.single?.qty ?? 0);
+    return cartonQty > 0 ? cartonQty : (singleQty > 0 ? singleQty : 1);
+};
 
   try {
     const db = admin.firestore();
     const batch = db.batch();
     let hasUpdates = false;
+    const summaryDocStates = new Map();
+    const stockReportDocStates = new Map();
 
-    // Explicitly detect operation type
-    const isDelete = !after && before;
-    const isCreate = after && !before;
+    const MAX_TRANSFORM_BATCH_LIMIT = 450;
 
-    // Use before data for metadata on delete, after data otherwise
-    const docForMetadata = after || before;
-    const companyid = docForMetadata?.returned_companyid;
-    const today = docForMetadata?.dateymd;
-    const staffEmail = docForMetadata?.staffemail || "system";
-    const staffName = docForMetadata?.returned_staff;
-    const returned_transMode = docForMetadata?.returned_transMode || "system";
+    const isFirestoreTransform = (value) => {
+      if (!value || typeof value !== 'object') return false;
+      const name = value.constructor && value.constructor.name;
+      return name === 'NumericIncrementTransform' || name === 'ServerTimestampTransform';
+    };
 
-    // Early validation of critical fields
-    if (!companyid || !today) {
-      logger.warn(`Sales return ${returnId} missing required metadata (companyid or dateymd). Operation: ${isDelete ? 'DELETE' : isCreate ? 'CREATE' : 'UPDATE'}`);
+    const normalizeIncrementValue = (value) => {
+      const numericValue = toNumber(value);
+      return Number.isFinite(numericValue) ? numericValue : 0;
+    };
+
+    const estimateTransformCount = (value) => {
+      if (Array.isArray(value)) {
+        return value.reduce((total, entry) => total + estimateTransformCount(entry), 0);
+      }
+
+      if (value && typeof value === 'object') {
+        if (isFirestoreTransform(value)) return 1;
+        let total = 0;
+        for (const child of Object.values(value)) {
+          total += estimateTransformCount(child);
+        }
+        return total;
+      }
+
+      return 0;
+    };
+
+    const getOrCreateDocState = (docStates, key, ref, baseData) => {
+      if (!docStates.has(key)) {
+        docStates.set(key, { ref, data: { ...baseData } });
+      }
+      return docStates.get(key);
+    };
+
+    const ensureObject = (parent, key) => {
+      if (!parent[key] || typeof parent[key] !== 'object' || Array.isArray(parent[key])) {
+        parent[key] = {};
+      }
+      return parent[key];
+    };
+
+    const applyIncrement = (target, fieldName, amount) => {
+      const safeAmount = normalizeIncrementValue(amount);
+      const currentValue = target[fieldName];
+      if (currentValue && isFirestoreTransform(currentValue)) {
+        const currentOperand = normalizeIncrementValue(currentValue.operand);
+        target[fieldName] = admin.firestore.FieldValue.increment(currentOperand + safeAmount);
+      } else {
+        target[fieldName] = admin.firestore.FieldValue.increment(safeAmount);
+      }
+    };
+
+    const flushDocWriteStates = async (docStates, firestoreDb) => {
+      const writes = [];
+      for (const state of docStates.values()) {
+        writes.push({
+          type: 'set',
+          ref: state.ref,
+          data: state.data,
+          options: { merge: true },
+        });
+      }
+
+      if (writes.length === 0) return;
+
+      let currentBatch = firestoreDb.batch();
+      let currentTransformCount = 0;
+      const currentWrites = [];
+
+      const commitCurrentBatch = async () => {
+        if (currentWrites.length === 0) return;
+        for (const write of currentWrites) {
+          if (write.type === 'set') {
+            currentBatch.set(write.ref, write.data, write.options || { merge: true });
+          }
+        }
+        await currentBatch.commit();
+      };
+
+      for (const write of writes) {
+        const nextTransformCount = currentTransformCount + estimateTransformCount(write.data);
+        if (currentWrites.length > 0 && nextTransformCount > MAX_TRANSFORM_BATCH_LIMIT) {
+          await commitCurrentBatch();
+          currentBatch = firestoreDb.batch();
+          currentTransformCount = 0;
+          currentWrites.length = 0;
+        }
+
+        currentWrites.push(write);
+        currentTransformCount = nextTransformCount;
+      }
+
+      await commitCurrentBatch();
+    };
+
+    const resolveBranchId = (saleData, itemData) => (
+      itemData.branchId || itemData.branchid || itemData.branch_id ||
+      saleData.branchId || saleData.branchid || saleData.branch_id ||
+      saleData.branch || saleData.warehouse
+    );
+
+    const resolveBranchName = (saleData, itemData, branchId) => (
+      itemData.branchName || itemData.branchname || itemData.branch_name ||
+      saleData.branchName || saleData.branchname || saleData.branch_name ||
+      saleData.warehouseName || branchId
+    );
+
+    const resolveUpdatedBy = (saleData) => (
+      saleData.updatedBy || saleData.updatedby || saleData.createdBy || saleData.createdby || "system"
+    );
+
+    const resolveItemId = (itemData, itemKey) => (
+      itemData.itemid || itemData.itemId || itemData.item_id || itemData.id || itemData.productId || itemKey
+    );
+
+    // perItemStatus: Map<itemKey, 'approved' | 'rejected'>
+    const buildItemStatusUpdates = (itemsSource, perItemStatus) => {
+      if (Array.isArray(itemsSource)) {
+        const nextItems = itemsSource.map((item) => (
+          item && typeof item === 'object' ? {...item} : item
+        ));
+
+        for (const [key, status] of perItemStatus.entries()) {
+          const index = Number(key);
+          if (!Number.isInteger(index) || index < 0 || index >= nextItems.length) continue;
+          if (!nextItems[index] || typeof nextItems[index] !== 'object') continue;
+          nextItems[index].stockCheckStatus = status;
+        }
+
+        return ['items', nextItems];
+      }
+
+      const updates = [];
+      for (const [key, status] of perItemStatus.entries()) {
+        updates.push(
+          new admin.firestore.FieldPath('items', key, 'stockCheckStatus'),
+          status,
+        );
+      }
+      return updates;
+    };
+
+    // Ignore only follow-up update events that add stockCheckStatus,
+    // but do not skip initial create events.
+    if (before && after?.stockCheckStatus && !before?.stockCheckStatus) {
       return null;
     }
 
-    const beforeItems = normalizeReturnItems(before);
-    const afterItems = normalizeReturnItems(after);
-    const allItemIds = new Set([...Object.keys(beforeItems), ...Object.keys(afterItems)]);
-    const updatedBy = resolveUpdatedBy(docForMetadata);
-    const branchStockValues = new Map();
-    for (const itemId of allItemIds) {
-      const beforeItem = beforeItems[itemId] || {returnedpieces: 0, branchId: null, branchName: null};
-      const afterItem = afterItems[itemId] || {returnedpieces: 0, branchId: null, branchName: null};
+    // Case 1: Document deleted - reverse all stockout changes
+    if (before && !after) {
+      if (before?.stockCheckStatus !== 'approved') return null;
+      const items = before.items || {};
+      const updatedBy = resolveUpdatedBy(before);
+      const companyId = resolveSaleCompanyId(before);
+      const itemIds = new Set();
 
-      const beforePieces = toNumber(beforeItem.returnedpieces);
-      const afterPieces = toNumber(afterItem.returnedpieces);
-      const piecesDelta = afterPieces - beforePieces;
+      // Collect item IDs
+      for (const [itemKey, itemData] of Object.entries(items)) {
+        if (!itemData || typeof itemData !== "object") continue;
+        const itemId = resolveItemId(itemData, itemKey);
+        if (itemId) itemIds.add(itemId);
+      }
 
-      const afterValue = toNumber(afterItem.returnAmount);
-      const beforeValue = toNumber(beforeItem.returnAmount);
-      const returnValue= afterValue-beforeValue;
+      // Fetch item documents to get cost prices
+      const itemRefs = Array.from(itemIds).map((id) => db.collection('itemsreg').doc(id));
+      const itemDocs = itemRefs.length > 0 ? await db.getAll(...itemRefs) : [];
+      const itemDocMap = new Map(itemDocs.map((doc) => [doc.id, doc.data() || {}]));
 
-      const afterProfit=toNumber(afterItem.returned_profit);
-      const beforeProfit=toNumber(beforeItem.returned_profit);
+      const branchStockValues = new Map(); // Track stock value changes per branch
+      const branchSalesValues = new Map();
 
-      const returned_profit=afterProfit-beforeProfit;
+      for (const [itemKey, itemData] of Object.entries(items)) {
+        if (!itemData || typeof itemData !== "object") continue;
 
-      const beforeDiscount=toNumber(beforeItem.returned_discount);
-      const afterDiscount=toNumber(afterItem.returned_discount);
-      const returned_discount=afterDiscount-beforeDiscount;
+        const itemId = resolveItemId(itemData, itemKey);
+        const branchId = resolveBranchId(before, itemData);
+        if (!itemId || !branchId) {
+          logger.warn(`Sales delete ${saleId} missing item/branch for key ${itemKey}`);
+          continue;
+        }
 
-      const branchId = afterItem.branchId || beforeItem.branchId;
-      const branchName = afterItem.branchName || beforeItem.branchName || branchId;
+        //const branchName = resolveBranchName(before, itemData, branchId);
+        const quantity = getItemQuantity(itemData);
+        const pieces = getItemPieces(itemData);
+        const modeqty = getItemModeQty(itemData);
+        const netQtyDelta = modeqty > 0 ? (pieces / modeqty) : quantity;
+        const itemAmount = toNumber(itemData.amount || itemData.totalamount || 0);
 
-      const return_netAmount = returnValue || 0;
-      const costof_goods = return_netAmount - toNumber(returned_profit);
-      const returnSalesValue = return_netAmount + toNumber(returned_discount);
-      const current = branchStockValues.get(branchId) || {
-        value: 0,
-        name: branchName,
+        const item_amount = toNumber(pieces*itemData.price || 0);
+
+        // Calculate stock value reduction (use cost price)
+        const itemDocData = itemDocMap.get(itemId) || {};
+        const costPrice = toNumber(itemData.cp ||itemDocData.cp || 0);
+        const stockValueReduction = costPrice * quantity;
+        const stockValreduction_pieces = costPrice * pieces;
+        const itemDiscount = toNumber(itemData.discount || itemData.Discount || 0);
+        const profit = toNumber( itemData.profit||itemDocData.profit || 0);
+        const salesValue = itemAmount+itemDiscount;
+        const paymentMode = (before.transMode || "cash").toLowerCase();
+        const isSalesPoint = (before.branchType === 'Sales Point' || before.branchType === 'sales point');
+          const BranchId = isSalesPoint ? before.branchId : resolveBranchId(before, itemData);
+          const branchName = isSalesPoint ? before.branchName:resolveBranchName(before, itemData, BranchId);
+
+        const currentSales = branchSalesValues.get(BranchId) || {
+          sales: 0,
+          discount: 0,
+          name: branchName,
+          modes: {
+            cash: 0,
+            card: 0,
+            momo: 0,
+            credit: 0,
+            "bank transfer": 0,
+          },
+        };
+
+        currentSales.sales += salesValue;
+        currentSales.discount += itemDiscount;
+
+        if (currentSales.modes.hasOwnProperty(paymentMode)) {
+          currentSales.modes[paymentMode] += itemAmount;
+        } else {
+          currentSales.modes.cash += itemAmount;
+        }
+
+        branchSalesValues.set(BranchId, currentSales);
+
+        if (quantity === 0 && pieces === 0) continue;
+        const boxpcs=getBoxQtyFromDoc(itemData);
+        const carton_qty=pieces/boxpcs;
+        const itemRegRef = db.collection("itemsreg").doc(itemId);
+        batch.update(
+          itemRegRef,
+           'sales_value', admin.firestore.FieldValue.increment(-salesValue),
+           'sales_qty', admin.firestore.FieldValue.increment(-pieces),
+          ...branchBalanceUpdateArgs(branchId, {
+            stockout_qty: admin.firestore.FieldValue.increment(-quantity),
+            stockout_pieces: admin.firestore.FieldValue.increment(-pieces),
+            netpieces: admin.firestore.FieldValue.increment(pieces),
+            sales_value: admin.firestore.FieldValue.increment(-salesValue),
+            stock_value: admin.firestore.FieldValue.increment(stockValreduction_pieces), // Restore stock value
+            name: branchName,
+            lastupdate: admin.firestore.FieldValue.serverTimestamp(),
+            updatedby: updatedBy,
+          }),
+          'lastModified',
+          admin.firestore.FieldValue.serverTimestamp(),
+          'lastSaleId',
+          saleId,
+        );
+// Daily transaction collection reference
+const {dateymd, day, month, week, year} = resolveSaleDateParts(before);
+const salesSummarydocId = `${companyId}_${dateymd}`;
+const dailyRef = db.collection('stockreport').doc(salesSummarydocId);
+const salesSummaryRef = db.collection('salesSummary').doc(salesSummarydocId);
+const isReceipted=before.reciepted===true;
+const stockReportState = getOrCreateDocState(stockReportDocStates, salesSummarydocId, dailyRef, {
+  summarydate: dateymd,
+  companyid: companyId,
+  lastupdate: admin.firestore.FieldValue.serverTimestamp(),
+  day,
+  month,
+  week,
+  year,
+  summaryid: salesSummarydocId,
+});
+
+const summaryState = getOrCreateDocState(summaryDocStates, salesSummarydocId, salesSummaryRef, {
+  summarydate: dateymd,
+  day,
+  month,
+  week,
+  year,
+  companyid: companyId,
+  company: before.companyname || companyId,
+  summaryid: salesSummarydocId,
+  createdat: admin.firestore.FieldValue.serverTimestamp(),
+});
+
+const branchBalanceRoot = ensureObject(stockReportState.data, 'branchbalance');
+const stockReportBranchEntry = ensureObject(branchBalanceRoot, branchId);
+stockReportBranchEntry.branchId = branchId;
+stockReportBranchEntry.branchName = branchName;
+stockReportBranchEntry.lastupdate = admin.firestore.FieldValue.serverTimestamp();
+stockReportBranchEntry.summaryid = salesSummarydocId;
+stockReportBranchEntry.summarydate = dateymd;
+stockReportBranchEntry.day = day;
+stockReportBranchEntry.month = month;
+stockReportBranchEntry.week = week;
+stockReportBranchEntry.year = year;
+stockReportBranchEntry.updatedby = updatedBy;
+applyIncrement(stockReportBranchEntry, 'branchstockin_balance', pieces);
+applyIncrement(stockReportBranchEntry, 'branchstockin_value', stockValreduction_pieces);
+applyIncrement(stockReportBranchEntry, 'branchsales_value', -salesValue);
+applyIncrement(stockReportBranchEntry, 'branchsales_qty', -pieces);
+applyIncrement(stockReportBranchEntry, 'branchstockout_balance', -pieces);
+applyIncrement(stockReportBranchEntry, 'branchstockout_value', -stockValreduction_pieces);
+applyIncrement(stockReportBranchEntry, 'branchtransaction_count', 1);
+
+const stockReportItemsRoot = ensureObject(stockReportState.data, 'items');
+const stockReportBranchItems = ensureObject(stockReportItemsRoot, branchId);
+stockReportBranchItems.branchId = branchId;
+stockReportBranchItems.branchName = branchName;
+stockReportBranchItems.lastupdate = admin.firestore.FieldValue.serverTimestamp();
+stockReportBranchItems.summaryid = salesSummarydocId;
+stockReportBranchItems.summarydate = dateymd;
+stockReportBranchItems.day = day;
+stockReportBranchItems.month = month;
+stockReportBranchItems.week = week;
+stockReportBranchItems.year = year;
+const stockItemEntry = ensureObject(stockReportBranchItems, itemId);
+stockItemEntry.barcode = itemData.barcode || '';
+stockItemEntry.itemid = itemId;
+stockItemEntry.itemName = itemData.item;
+stockItemEntry.summarydate = dateymd;
+stockItemEntry.day = day;
+stockItemEntry.month = month;
+stockItemEntry.week = week;
+stockItemEntry.year = year;
+stockItemEntry.lastupdate = admin.firestore.FieldValue.serverTimestamp();
+applyIncrement(stockItemEntry, 'stockin_balance', pieces);
+applyIncrement(stockItemEntry, 'stockin_value', stockValreduction_pieces);
+applyIncrement(stockItemEntry, 'sales_qty', -pieces);
+applyIncrement(stockItemEntry, 'sales_value', -salesValue);
+applyIncrement(stockItemEntry, 'stockout_balance', -pieces);
+applyIncrement(stockItemEntry, 'stockout_value', -stockValreduction_pieces);
+applyIncrement(stockItemEntry, 'transaction_count', 1);
+
+applyIncrement(summaryState.data, 'companysales_value', -salesValue);
+applyIncrement(summaryState.data, 'companysales_qty', -pieces);
+applyIncrement(summaryState.data, 'company_Discount', -itemDiscount);
+applyIncrement(summaryState.data, before.transMode || 'cash', -itemAmount);
+applyIncrement(summaryState.data, 'companyCostof_goods', -stockValreduction_pieces);
+applyIncrement(summaryState.data, 'companytransaction_count', 1);
+applyIncrement(summaryState.data, 'company_profit', -profit);
+
+const branchSummaryRoot = ensureObject(summaryState.data, 'branchSummary');
+const branchSummaryEntry = ensureObject(branchSummaryRoot, BranchId);
+branchSummaryEntry.summaryid = salesSummarydocId;
+branchSummaryEntry.summarydate = dateymd;
+branchSummaryEntry.day = day;
+branchSummaryEntry.month = month;
+branchSummaryEntry.week = week;
+branchSummaryEntry.year = year;
+branchSummaryEntry.branchId = BranchId;
+branchSummaryEntry.branchName = branchName;
+branchSummaryEntry.branchlastupdate = admin.firestore.FieldValue.serverTimestamp();
+applyIncrement(branchSummaryEntry, 'branchsales_qty', -pieces);
+applyIncrement(branchSummaryEntry, 'branchsales_value', -salesValue);
+applyIncrement(branchSummaryEntry, 'branchtransaction_count', 1);
+applyIncrement(branchSummaryEntry, 'branchCostof_goods', -stockValreduction_pieces);
+applyIncrement(branchSummaryEntry, 'branch_Discount', -itemDiscount);
+applyIncrement(branchSummaryEntry, before.transMode || 'cash', -itemAmount);
+applyIncrement(branchSummaryEntry, 'branch_profit', -profit);
+branchSummaryEntry.updatedby = updatedBy;
+const branchItemsRoot = ensureObject(branchSummaryEntry, 'items');
+const branchItemEntry = ensureObject(branchItemsRoot, itemId);
+branchItemEntry.barcode = itemData.barcode || '';
+branchItemEntry.itemid = itemId;
+branchItemEntry.itemName = itemData.item;
+branchItemEntry.summaryid = salesSummarydocId;
+branchItemEntry.summarydate = dateymd;
+branchItemEntry.day = day;
+branchItemEntry.month = month;
+branchItemEntry.week = week;
+branchItemEntry.year = year;
+branchItemEntry.lastupdate = admin.firestore.FieldValue.serverTimestamp();
+applyIncrement(branchItemEntry, before.transMode || 'cash', -itemAmount);
+applyIncrement(branchItemEntry, 'sales_qty', -pieces);
+applyIncrement(branchItemEntry, 'sales_value', -salesValue);
+applyIncrement(branchItemEntry, 'discount', -itemDiscount);
+applyIncrement(branchItemEntry, 'costof_goods', -stockValreduction_pieces);
+applyIncrement(branchItemEntry, 'transaction_count', 1);
+applyIncrement(branchItemEntry, 'profit', -profit);
+branchItemEntry.updatedby = updatedBy;
+
+if(isReceipted){
+const staffSummaryRoot = ensureObject(summaryState.data, 'staffSummary');
+const staffBranchEntry = ensureObject(staffSummaryRoot, BranchId);
+const staffEntry =isSalesPoint?ensureObject(staffBranchEntry, before.cashieremail || 'system'): ensureObject(staffBranchEntry, before.staffemail || 'system');
+staffEntry.staffemail = isSalesPoint?(before.cashieremail ||'system'):before.staffemail || 'system';
+staffEntry.branchId = BranchId;
+staffEntry.branchName = branchName;
+staffEntry.summaryid = salesSummarydocId;
+staffEntry.summarydate = dateymd;
+staffEntry.stafflastupdate = admin.firestore.FieldValue.serverTimestamp();
+applyIncrement(staffEntry, 'staffdiscount', -itemDiscount);
+applyIncrement(staffEntry, 'staffsales_value', -salesValue);
+applyIncrement(staffEntry, 'staffsales_qty', -pieces);
+applyIncrement(staffEntry, before.transMode || 'cash', -itemAmount);
+applyIncrement(staffEntry, 'profit', -profit);
+applyIncrement(staffEntry, 'stafftransaction_count', 1);
+applyIncrement(staffEntry, 'staffCostof_goods', -stockValreduction_pieces);
+}
+// Reduce customer's credit balance if this was a credit sale
+if (
+  (((before.transMode || "").toLowerCase() === "credit") ||
+   ((before.transMode || "").toLowerCase() === "credit sales")) &&
+  (before.customerId)
+)
+   {
+  const customerRef = db.collection("customers").doc(before.customerId);
+
+  batch.set(
+    customerRef,
+    {
+      creditBalance: admin.firestore.FieldValue.increment(-itemAmount),
+      lastupdate: admin.firestore.FieldValue.serverTimestamp(),
+      updatedby: updatedBy,
+    },
+    { merge: true }
+  );
+}
+        // Accumulate stock value changes per branch
+        const currentValue = branchStockValues.get(branchId) || {value: 0, name: branchName};
+        currentValue.value += stockValreduction_pieces;
+        branchStockValues.set(branchId, currentValue);
+
+        hasUpdates = true;
+      }
+
+      if (hasUpdates) {
+        await batch.commit();
+        await flushDocWriteStates(summaryDocStates, db);
+        await flushDocWriteStates(stockReportDocStates, db);
+
+        //  Update dashboard_stats branchstock for each affected branch
+        if (companyId && (branchStockValues.size > 0 || branchSalesValues.size > 0)) {
+          const statsRef = db.collection("dashbaord_stats").doc(companyId);
+
+          await db.runTransaction(async (transaction) => {
+            const updateArgs = [];
+
+            let totalStockValue = 0;
+            let totalSales = 0;
+            let companyDiscount = 0;
+            let companyCash = 0;
+            let companyCard = 0;
+            let companyMomo = 0;
+            let companyCredit = 0;
+            let companyBankTransfer = 0;
+
+            // =============================
+            // Restore Stock Value
+            // =============================
+            for (const [branchId, data] of branchStockValues.entries()) {
+              updateArgs.push(
+                new admin.firestore.FieldPath("branchstock",branchId, "stock_value" ),
+                admin.firestore.FieldValue.increment(data.value),
+
+                new admin.firestore.FieldPath( "branchstock",  branchId, "branchname" ),
+                data.name
+              );
+
+              totalStockValue += data.value;
+            }
+
+            // =============================
+            // Reverse Sales Value
+            // =============================
+            for (const [branchId, data] of branchSalesValues.entries()) {
+              updateArgs.push(
+                new admin.firestore.FieldPath(
+                  "branchsales",
+                  branchId,
+                  "sales_value"
+                ),
+                admin.firestore.FieldValue.increment(-data.sales),
+
+                new admin.firestore.FieldPath(
+                  "branchsales",
+                  branchId,
+                  "branchname"
+                ),
+                data.name,
+            new admin.firestore.FieldPath("branchsales",branchId,"discount"),
+            admin.firestore.FieldValue.increment(-data.discount),
+                new admin.firestore.FieldPath(
+                  "branchsales",
+                  branchId,
+                  "cash"
+                ),
+                admin.firestore.FieldValue.increment(-data.modes.cash),
+
+                new admin.firestore.FieldPath(
+                  "branchsales",
+                  branchId,
+                  "card"
+                ),
+                admin.firestore.FieldValue.increment(-data.modes.card),
+
+                new admin.firestore.FieldPath(
+                  "branchsales",
+                  branchId,
+                  "momo"
+                ),
+                admin.firestore.FieldValue.increment(-data.modes.momo),
+
+                new admin.firestore.FieldPath(
+                  "branchsales",
+                  branchId,
+                  "credit"
+                ),
+                admin.firestore.FieldValue.increment(-data.modes.credit),
+
+                new admin.firestore.FieldPath(
+                  "branchsales",
+                  branchId,
+                  "bank transfer"
+                ),
+                admin.firestore.FieldValue.increment(
+                  -data.modes["bank transfer"]
+                )
+              );
+
+              totalSales += data.sales;
+               companyDiscount += data.discount;
+              companyCash += data.modes.cash;
+              companyCard += data.modes.card;
+              companyMomo += data.modes.momo;
+              companyCredit += data.modes.credit;
+              companyBankTransfer += data.modes["bank transfer"];
+            }
+
+            transaction.set(
+              statsRef,
+              {
+                companyId,
+                updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+
+                stock_in_total: admin.firestore.FieldValue.increment(totalStockValue),
+                 company_Discount:admin.firestore.FieldValue.increment(-companyDiscount),
+                companysales_value:admin.firestore.FieldValue.increment(-totalSales),
+
+                cash:  admin.firestore.FieldValue.increment(-companyCash),
+
+                card: admin.firestore.FieldValue.increment(-companyCard),
+
+                momo: admin.firestore.FieldValue.increment(-companyMomo),
+
+                credit: admin.firestore.FieldValue.increment(-companyCredit),
+
+                "bank transfer": admin.firestore.FieldValue.increment(-companyBankTransfer),
+              },
+              { merge: true }
+            );
+
+            if (updateArgs.length > 0) {
+              transaction.update(statsRef, ...updateArgs);
+            }
+          });
+
+          logger.info(
+            `Dashboard stats restored for deleted sale ${saleId}.`
+          );
+        }
+
+      }
+      return null;
+    }
+
+    // Case 2: Document created
+    if (after && !before) {
+      const items = after.items || {};
+      const updatedBy = resolveUpdatedBy(after);
+      const saleRef = db.collection('sales').doc(saleId);
+      const companyId = resolveSaleCompanyId(after);
+
+      const aggregated = new Map();
+      for (const [itemKey, itemData] of Object.entries(items)) {
+        if (!itemData || typeof itemData !== 'object') continue;
+
+        const itemId = resolveItemId(itemData, itemKey);
+        const branchId = resolveBranchId(after, itemData);
+        if (!itemId || !branchId) continue;
+
+        const key = `${itemId}::${branchId}`;
+        const current = aggregated.get(key) || {
+          itemId,
+          branchId,
+          quantity: 0,
+          pieces: 0,
+           amount: 0,
+           discount: 0,
+           profit: 0,
+          itemData,
+          itemKeys: [],
+        };
+
+        current.quantity += toNumber(getItemQuantity(itemData));
+        current.pieces += toNumber(getItemPieces(itemData));
+        current.amount += toNumber(itemData.amount || itemData.totalamount || 0);
+        current.discount += toNumber(itemData.discount || 0);
+        current.profit += toNumber(itemData.profit || 0);
+        current.itemKeys.push(itemKey);
+        aggregated.set(key, current);
+      }
+
+      const branchStockValues = new Map(); // Track stock value changes per branch
+      const branchSalesValues = new Map();
+      // Replace heavy transaction with chunked read + chunked writes to avoid timeouts
+      let result;
+      // Step A: read item docs outside transaction in chunks
+      const perItemStatus = new Map();
+      let overallApproved = true;
+      let rejectInfo = null;
+
+      // Helper: safely apply sale document updates in chunks to avoid
+      // exceeding Firestore's ~500 field transform limit per write.
+      const flushSaleUpdates = async (saleRef, baseUpdates, itemsUpdateFields) => {
+        const MAX_TRANSFORMS = 400; // keep below 500 for safety
+        // If itemsUpdateFields replaces the whole items array, do single update
+        if (Array.isArray(itemsUpdateFields) && itemsUpdateFields[0] === 'items') {
+          const chunk = db.batch();
+          chunk.update(saleRef, ...baseUpdates, 'items', itemsUpdateFields[1]);
+          await chunk.commit();
+          return;
+        }
+
+        const basePairs = Math.floor(baseUpdates.length / 2);
+        const itemsPairsTotal = Math.floor(itemsUpdateFields.length / 2);
+        let perChunkPairs = Math.max(1, Math.floor(MAX_TRANSFORMS - basePairs));
+
+        // If there are no item field updates, just run a single update
+        if (itemsPairsTotal === 0) {
+          const batchSingle = db.batch();
+          batchSingle.update(saleRef, ...baseUpdates);
+          await batchSingle.commit();
+          return;
+        }
+
+        // Slice the itemsUpdateFields (which is [fieldPath1, val1, fieldPath2, val2, ...])
+        for (let i = 0; i < itemsUpdateFields.length; i += perChunkPairs * 2) {
+          const slice = itemsUpdateFields.slice(i, i + perChunkPairs * 2);
+          const chunk = db.batch();
+          chunk.update(saleRef, ...baseUpdates, ...slice);
+          await chunk.commit();
+        }
       };
 
 
+        // Build itemDocMap by reading item documents in chunks
+        const uniqueItemIds = Array.from(new Set(Array.from(aggregated.values()).map(e => e.itemId)));
+        const itemRefs = uniqueItemIds.map(id => db.collection('itemsreg').doc(id));
+        const itemDocMap = new Map();
+        const GET_CHUNK = 400;
+        for (let i = 0; i < itemRefs.length; i += GET_CHUNK) {
+          const chunk = itemRefs.slice(i, i + GET_CHUNK);
+          const snaps = await db.getAll(...chunk);
+          snaps.forEach((snap) => itemDocMap.set(snap.id, snap.exists ? (snap.data() || {}) : {}));
+        }
 
-      // Skip if no change
-      if (piecesDelta === 0) continue;
-       const stockValueDelta =
-           isDelete ? -costof_goods : costof_goods;
+        for (const entry of aggregated.values()) {
+          const itemDoc = itemDocMap.get(entry.itemId) || {};
+          const productType = (itemDoc.producttype || "").toLowerCase();
+          // Services do not participate in stock checking.
+          if (productType === "service") {
+            for (const key of entry.itemKeys) perItemStatus.set(key, "approved");
+            continue;
+          }
 
-       current.value += stockValueDelta;
-      branchStockValues.set(branchId, current);
-      if (!branchId) {
-        logger.warn(`Sales return ${returnId} missing returned_branchid for item ${itemId}`);
-        continue;
-      }
+          const branchBalance = itemDoc.branchbalance || {};
+          const branchData = branchBalance[entry.branchId] || {};
+          const availableNetPieces = toNumber(branchData.netpieces ?? 0);
 
+          const boxQty = getBoxQtyFromDoc(itemDoc);
+          const availableBoxes = boxQty > 0 ? (availableNetPieces / boxQty) : 0;
+          const requestedBoxes = boxQty > 0 ? (entry.pieces / boxQty) : 0;
 
+          const entryStatus = requestedBoxes > availableBoxes ? 'rejected' : 'approved';
+          for (const key of entry.itemKeys) perItemStatus.set(key, entryStatus);
 
-      // Log operation type for debugging
-      if (isDelete) {
-        logger.info(`DELETE: sales return ${returnId}, item ${itemId}, pieces delta: ${piecesDelta}`);
-      } else if (isCreate) {
-        logger.info(`CREATE: sales return ${returnId}, item ${itemId}, pieces delta: ${piecesDelta}`);
-      }
-
-      const itemRef = db.collection("itemsreg").doc(itemId);
-
-      // Increase branch balance for returned pieces (restore inventory)
-      batch.update(
-        itemRef,
-        ...branchBalanceUpdateArgs(branchId, {
-          netpieces: admin.firestore.FieldValue.increment(piecesDelta),
-          name: branchName,
-          lastupdate: admin.firestore.FieldValue.serverTimestamp(),
-          updatedby: updatedBy,
-        }),
-        "lastModified",
-        admin.firestore.FieldValue.serverTimestamp(),
-        "lastSalesReturnId",
-        returnId,
-      );
-
-      // Daily stockReport collection reference
-      const salesSummarydocId = `${companyid}_${today}`;
-      const dailyRef = db.collection('stockreport').doc(salesSummarydocId);
-
-      batch.set(
-        dailyRef,
-        {
-        companyid: companyid,
-        summarydate:today,
-        summaryid:salesSummarydocId,
-          branchbalance: {
-            [branchId]: {
-              branchId: branchId,
-              branchName: branchName,
-              lastupdate:admin.firestore.FieldValue.serverTimestamp(),
-              summaryid:salesSummarydocId,
-              branchstockin_balance:admin.firestore.FieldValue.increment(piecesDelta),
-              branchsales_value:admin.firestore.FieldValue.increment(-returnSalesValue),
-
-              branchsales_qty:admin.firestore.FieldValue.increment(-piecesDelta),
-              branchstockout_balance:admin.firestore.FieldValue.increment(-piecesDelta),
-              branchtransaction_count:admin.firestore.FieldValue.increment(1),
-              summarydate:today,
-              updatedby: updatedBy, 
-             
+          if (entryStatus === 'rejected') {
+            overallApproved = false;
+            if (!rejectInfo) {
+              rejectInfo = { itemId: entry.itemId, branchId: entry.branchId, requestedBoxes, availableBoxes };
             }
-          },
-             items:{
-              [branchId]:{
-              branchId: branchId,
-              branchName: branchName,
-              lastupdate:admin.firestore.FieldValue.serverTimestamp(),
-              summaryid:salesSummarydocId,
-              [itemId]:{
-              itemid: itemId,
-              item: afterItems[itemId]?.itemName ||beforeItems[itemId]?.itemName ||"",
-              barcode: afterItems[itemId]?.itemBarcode || beforeItems[itemId]?.itemBarcode ||"",
-              lastupdate:admin.firestore.FieldValue.serverTimestamp(),
-              stockin_balance: admin.firestore.FieldValue.increment(piecesDelta),
-              sales_value: admin.firestore.FieldValue.increment(returnSalesValue),
-              salesReturn_qty:admin.firestore.FieldValue.increment(piecesDelta),
-              sales_qty:admin.firestore.FieldValue.increment(-piecesDelta),
-              stockout_balance: admin.firestore.FieldValue.increment(-piecesDelta),
-              transaction_count:admin.firestore.FieldValue.increment(1),
-              summarydate:today,
-                }
-              }
-                
-              }
+          }
+        }
+
+        // Step 3a: If any item is rejected, update each item individually and set overall rejected
+        if (!overallApproved) {
+          const saleUpdates = [
+            'stockCheckStatus', 'rejected',
+            'stockCheckedAt', admin.firestore.FieldValue.serverTimestamp(),
+            'stockRejectReason', 'insufficient_stock',
+            'stockRejectItemId', rejectInfo.itemId,
+            'stockRejectBranchId', rejectInfo.branchId,
+            'stockRejectRequestedBoxes', rejectInfo.requestedBoxes,
+            'stockRejectAvailableBoxes', rejectInfo.availableBoxes,
+          ];
+          saleUpdates.push(...buildItemStatusUpdates(items, perItemStatus));
+          // Defer sale updates to chunked commit path below (avoid transaction)
+        }
+
+
+
+        // Replace transactional finalization with chunked commits below
+
+
+      // perform chunked writes based on perItemStatus and aggregated data
+      if (!overallApproved) {
+        const saleUpdates = [
+          'stockCheckStatus', 'rejected',
+          'stockCheckedAt', admin.firestore.FieldValue.serverTimestamp(),
+          'stockRejectReason', 'insufficient_stock',
+          'stockRejectItemId', rejectInfo?.itemId,
+          'stockRejectBranchId', rejectInfo?.branchId,
+          'stockRejectRequestedBoxes', rejectInfo?.requestedBoxes,
+          'stockRejectAvailableBoxes', rejectInfo?.availableBoxes,
+        ];
+        const itemsUpdateFields = buildItemStatusUpdates(items, perItemStatus);
+        await flushSaleUpdates(saleRef, saleUpdates, itemsUpdateFields);
+        result = { status: 'rejected' };
+      } else {
+        const batchWrites = [];
+        for (const entry of aggregated.values()) {
+          const itemDoc = itemDocMap.get(entry.itemId) || {};
+          const itemRef = db.collection('itemsreg').doc(entry.itemId);
+          const costPrice = toNumber(entry.itemData.cp || itemDoc.cp || 0);
+          const producttype = (entry.itemData.producttype || itemDoc.producttype ||"Not set");
+          const pcategory = (entry.itemData.pcategory || itemDoc.pcategory ||"Not set");
+          const stockValueReduction = costPrice * entry.pieces;
+          const itemsales_value = toNumber(entry.amount) + toNumber(entry.discount);
+          const transMode = (after.transMode || 'cash').toLowerCase().trim();
+          const isSalesPoint = (after.branchType === 'Sales Point' || after.branchType === 'sales point');
+          const BranchId = isSalesPoint ? after.branchId : entry.branchId;
+          const branchName = isSalesPoint ? after.branchName:resolveBranchName(after, entry.itemData, entry.branchId);
+
+        const currentSales =branchSalesValues.get(BranchId) || {
+        sales: 0,
+        discount: 0,
+        name: branchName,
+        modes: {
+        cash: 0,
+        card: 0,
+        momo: 0,
+        credit: 0,
+        "bank transfer": 0,
         },
-        { merge: true }
-      );
+        };
 
-      // Daily salesSummary collection
-      const salesSummaryRef = db.collection('salesSummary').doc(salesSummarydocId);
-      batch.set(
-        salesSummaryRef,
-        {
-       
-            
-              companysales_returnsqty: admin.firestore.FieldValue.increment(piecesDelta),
-              ['company'+returned_transMode+ '_returns']: admin.firestore.FieldValue.increment(return_netAmount),
-              company_returnDiscount:admin.firestore.FieldValue.increment(returned_discount),
-              companysales_value:admin.firestore.FieldValue.increment(-returnSalesValue),
-              companyCostof_goods:admin.firestore.FieldValue.increment(-costof_goods),
-              companytransaction_count:admin.firestore.FieldValue.increment(1),
-              company_returnprofit:admin.firestore.FieldValue.increment(toNumber(returned_profit)),
-         
-              branchSummary: {
-            [branchId]: {
-             summaryid:salesSummarydocId,
-              summarydate:today,
-              branchId: branchId,
-              branchName: branchName,
-              branchlastupdate:admin.firestore.FieldValue.serverTimestamp(),
-              branchsales_value:admin.firestore.FieldValue.increment(-returnSalesValue),
-              branchsalesReturn_qty: admin.firestore.FieldValue.increment(piecesDelta),
-              branchsalesReturn_value:admin.firestore.FieldValue.increment(return_netAmount),
-              branch_returnDiscount:admin.firestore.FieldValue.increment(returned_discount),
-              ['branch_'+returned_transMode+ '_returns']:admin.firestore.FieldValue.increment(return_netAmount),
-              branchtransaction_count:admin.firestore.FieldValue.increment(1),
-              branchCostof_goods:admin.firestore.FieldValue.increment(-costof_goods),
-              branch_returnprofit:admin.firestore.FieldValue.increment(toNumber(returned_profit)),
+        currentSales.sales += itemsales_value;
+        currentSales.discount += toNumber(entry.discount);
 
-               items: {
-              [itemId]: {
+        if (transMode === 'cash'||transMode==='cash sales') {
+        currentSales.modes.cash += toNumber(entry.amount);
+        } else if (transMode === 'card') {
+        currentSales.modes.card += toNumber(entry.amount);
+        } else if (transMode === 'momo'||transMode==='mobile money'){
+        currentSales.modes.momo += toNumber(entry.amount);
+        } else if (transMode === 'credit'||transMode==='credit sales') {
+        currentSales.modes.credit += toNumber(entry.amount);
+        } else if (transMode === 'bank transfer') {
+        currentSales.modes["bank transfer"] += toNumber(entry.amount);
+        }
 
-              itemid: itemId,
-              item: afterItems[itemId]?.itemName ||beforeItems[itemId]?.itemName ||"",
-              barcode: afterItems[itemId]?.itemBarcode || beforeItems[itemId]?.itemBarcode ||"",
-              summaryid:salesSummarydocId,
-              summarydate:today,
-              lastupdate:admin.firestore.FieldValue.serverTimestamp(),
-
-              [returned_transMode+ '_returns']:admin.firestore.FieldValue.increment(return_netAmount),
-
-              [returned_transMode+ '_returnqty']:admin.firestore.FieldValue.increment(piecesDelta),
-              salesReturn_value:admin.firestore.FieldValue.increment(return_netAmount),
-              sales_value: admin.firestore.FieldValue.increment(-returnSalesValue),
-              return_discount:admin.firestore.FieldValue.increment(returned_discount),
-              costof_goods:admin.firestore.FieldValue.increment(-costof_goods),
-              transaction_count: admin.firestore.FieldValue.increment(1),
-              return_profit:admin.firestore.FieldValue.increment(toNumber(returned_profit)),
+        branchSalesValues.set(BranchId, currentSales);
+          const updateArgs = [
+            'sales_value', admin.firestore.FieldValue.increment(itemsales_value),
+            'sales_qty', admin.firestore.FieldValue.increment(entry.pieces),
+            ...branchBalanceUpdateArgs(entry.branchId, {
+              stockout_qty: admin.firestore.FieldValue.increment(entry.quantity),
+              stockout_pieces: admin.firestore.FieldValue.increment(entry.pieces),
+              netpieces: admin.firestore.FieldValue.increment(-entry.pieces),
+              sales_value: admin.firestore.FieldValue.increment(itemsales_value),
+              sales_qty: admin.firestore.FieldValue.increment(entry.pieces),
+              stock_value: admin.firestore.FieldValue.increment(-stockValueReduction),
+              name: branchName,
+              lastupdate: admin.firestore.FieldValue.serverTimestamp(),
               updatedby: updatedBy,
-            }
-          }
-            }
-          },
-           staffSummary: {
-            [branchId]:{
-            [staffEmail]: {
-              staff:staffName,
-              staffemail:staffEmail,
-              branchId: branchId,
-              branchName: branchName,
-              summaryid:salesSummarydocId,
-              summarydate:today,
-              stafflastupdate:admin.firestore.FieldValue.serverTimestamp(),
-              staffsales_value:admin.firestore.FieldValue.increment(-returnSalesValue),
-              staff_returndiscount:admin.firestore.FieldValue.increment(returned_discount),
-              staffsalesReturn_qty:admin.firestore.FieldValue.increment(piecesDelta),
-              staffsalesReturn_value:admin.firestore.FieldValue.increment(return_netAmount),
-              [returned_transMode+ '_returns']:admin.firestore.FieldValue.increment(return_netAmount),
-              returnprofit:admin.firestore.FieldValue.increment(toNumber(returned_profit)),
-              stafftransaction_count:admin.firestore.FieldValue.increment(1),
-              staffCostof_goods:admin.firestore.FieldValue.increment(-costof_goods),
+            }),
+            'lastModified', admin.firestore.FieldValue.serverTimestamp(),
+            'lastSaleId', saleId,
+          ];
 
-            }
+          batchWrites.push({ type: 'update', ref: itemRef, args: updateArgs });
+
+          if (((after.transMode || "").toLowerCase() === 'credit')||((after.transMode || "").toLowerCase() === 'credit sales') && after.customerId) {
+            const customerRef = db.collection('customers').doc(after.customerId);
+            batchWrites.push({ type: 'set', ref: customerRef, data: {
+              creditBalance: admin.firestore.FieldValue.increment(entry.amount),
+              lastupdate: admin.firestore.FieldValue.serverTimestamp(),
+              updatedby: updatedBy,
+            }, options: { merge: true } });
           }
+
+          const isReceipted = after.reciepted === true;
+          const {dateymd, day, month, week, year} = resolveSaleDateParts(after);
+          const salesSummarydocId = `${companyId}_${dateymd}`;
+          const salesSummaryRef = db.collection('salesSummary').doc(salesSummarydocId);
+          const summaryState = getOrCreateDocState(summaryDocStates, salesSummarydocId, salesSummaryRef, {
+            summarydate: dateymd,
+            day,
+            month,
+            week,
+            year,
+            companyid: companyId,
+            company: after.companyname || companyId,
+            summaryid: salesSummarydocId,
+            createdat: admin.firestore.FieldValue.serverTimestamp(),
+          });
+
+          applyIncrement(summaryState.data, 'companysales_value', itemsales_value || 0);
+          applyIncrement(summaryState.data, 'companysales_qty', entry.pieces);
+          applyIncrement(summaryState.data, 'company_Discount', entry.discount || 0);
+          applyIncrement(summaryState.data, after.transMode || 'cash', entry.amount || 0);
+          applyIncrement(summaryState.data, 'companyCostof_goods', stockValueReduction);
+          applyIncrement(summaryState.data, 'companytransaction_count', 1);
+          applyIncrement(summaryState.data, 'company_profit', entry.profit || 0);
+
+          const branchSummaryRoot = ensureObject(summaryState.data, 'branchSummary');
+          const branchSummaryEntry = ensureObject(branchSummaryRoot, BranchId);
+          branchSummaryEntry.summaryid = salesSummarydocId;
+          branchSummaryEntry.summarydate = dateymd;
+          branchSummaryEntry.day = day;
+          branchSummaryEntry.month = month;
+          branchSummaryEntry.week = week;
+          branchSummaryEntry.year = year;
+          branchSummaryEntry.branchId = BranchId;
+          branchSummaryEntry.branchName = branchName;
+          branchSummaryEntry.branchlastupdate = admin.firestore.FieldValue.serverTimestamp();
+          applyIncrement(branchSummaryEntry, 'branchsales_qty', entry.pieces);
+          applyIncrement(branchSummaryEntry, 'branchsales_value', itemsales_value);
+          applyIncrement(branchSummaryEntry, 'branchtransaction_count', 1);
+          applyIncrement(branchSummaryEntry, 'branchCostof_goods', stockValueReduction);
+          applyIncrement(branchSummaryEntry, 'branch_profit', toNumber(entry.profit));
+          applyIncrement(branchSummaryEntry, 'branch_Discount',toNumber(entry.discount));
+          applyIncrement(branchSummaryEntry, after.transMode || 'cash', entry.amount || 0);
+
+          const branchItemsRoot = ensureObject(branchSummaryEntry, 'items');
+          const branchItemEntry = ensureObject(branchItemsRoot, entry.itemId);
+          branchItemEntry.barcode = entry.itemData.barcode || '';
+          branchItemEntry.itemid = entry.itemId;
+          branchItemEntry.itemName = entry.itemData.item;
+          branchItemEntry.producttype = entry.itemData.producttype;
+          branchItemEntry.pcategory = pcategory;
+          branchItemEntry.cp = costPrice;
+          branchItemEntry.summaryid = salesSummarydocId;
+          branchItemEntry.summarydate = dateymd;
+          branchItemEntry.day = day;
+          branchItemEntry.month = month;
+          branchItemEntry.week = week;
+          branchItemEntry.year = year;
+          branchItemEntry.lastupdate = admin.firestore.FieldValue.serverTimestamp();
+          branchItemEntry.branchId = entry.branchId;
+          branchItemEntry.branchName = branchName;
+          applyIncrement(branchItemEntry, after.transMode || 'cash', toNumber(entry.amount));
+          applyIncrement(branchItemEntry, 'sales_qty', entry.pieces);
+          applyIncrement(branchItemEntry, 'sales_value', itemsales_value);
+          applyIncrement(branchItemEntry, 'discount', toNumber(entry.discount));
+          applyIncrement(branchItemEntry, 'costof_goods', stockValueReduction);
+          applyIncrement(branchItemEntry, 'transaction_count', 1);
+          applyIncrement(branchItemEntry, 'profit', toNumber(entry.profit));
+          branchItemEntry.updatedby = updatedBy;
+
+           if(isReceipted) {
+           const staffSummaryRoot = ensureObject(summaryState.data, 'staffSummary');
+            const staffBranchEntry = ensureObject(staffSummaryRoot, entry.branchId);
+            const staffEntry = ensureObject(staffBranchEntry, after.staffemail || 'system');
+            staffEntry.staffemail = after.staffemail || 'system';
+            staffEntry.staff = after.receiptby || after.createdby || after.createdBy||'system';
+            staffEntry.branchId = entry.branchId;
+            staffEntry.branchName = branchName;
+            staffEntry.summaryid = salesSummarydocId;
+            staffEntry.summarydate = dateymd;
+
+            staffEntry.stafflastupdate = admin.firestore.FieldValue.serverTimestamp();
+            applyIncrement(staffEntry, 'staffdiscount', toNumber(entry.discount));
+            applyIncrement(staffEntry, 'staffsales_value',itemsales_value);
+            applyIncrement(staffEntry, 'staffsales_qty', entry.pieces);
+            applyIncrement(staffEntry, after.transMode || 'cash', toNumber(entry.amount));
+            applyIncrement(staffEntry, 'profit', toNumber(entry.profit));
+            applyIncrement(staffEntry, 'staffCostof_goods', stockValueReduction);
+}
+
+          const dailyRef = db.collection('stockreport').doc(salesSummarydocId);
+          const stockReportState = getOrCreateDocState(stockReportDocStates, salesSummarydocId, dailyRef, {
+            companytransaction_count: admin.firestore.FieldValue.increment(0),
+            lastupdate: admin.firestore.FieldValue.serverTimestamp(),
+            summarydate: dateymd,
+            companyid: companyId,
+            day,
+            month,
+            week,
+            year,
+            summaryid: salesSummarydocId,
+          });
+
+          applyIncrement(stockReportState.data, 'companytransaction_count', 1);
+
+          const branchBalanceRoot = ensureObject(stockReportState.data, 'branchbalance');
+          const branchBalanceEntry = ensureObject(branchBalanceRoot, entry.branchId);
+          branchBalanceEntry.branchId = entry.branchId;
+          branchBalanceEntry.branchName = entry.branchName || entry.branchId;
+          branchBalanceEntry.lastupdate = admin.firestore.FieldValue.serverTimestamp();
+          branchBalanceEntry.summaryid = salesSummarydocId;
+          branchBalanceEntry.summarydate = dateymd;
+          branchBalanceEntry.day = day;
+          branchBalanceEntry.month = month;
+          branchBalanceEntry.week = week;
+          branchBalanceEntry.year = year;
+          branchBalanceEntry.updatedby = updatedBy;
+          applyIncrement(branchBalanceEntry, 'branchsales_value', itemsales_value);
+          applyIncrement(branchBalanceEntry, 'branchsales_qty', entry.pieces);
+          applyIncrement(branchBalanceEntry, 'branchstockout_balance', entry.pieces);
+          applyIncrement(branchBalanceEntry, 'branchstockout_value', stockValueReduction || 0);
+          applyIncrement(branchBalanceEntry, 'branchtransaction_count', 1);
+
+          const itemsRoot = ensureObject(stockReportState.data, 'items');
+          const branchItemsEntry = ensureObject(itemsRoot, entry.branchId);
+          branchItemsEntry.branchId = entry.branchId;
+          branchItemsEntry.branchName = entry.branchName||entry.branchId;
+          branchItemsEntry.lastupdate = admin.firestore.FieldValue.serverTimestamp();
+          branchItemsEntry.summaryid = salesSummarydocId;
+          branchItemsEntry.summarydate = dateymd;
+          branchItemsEntry.day = day;
+          branchItemsEntry.month = month;
+          branchItemsEntry.week = week;
+          branchItemsEntry.year = year;
+          const itemEntry = ensureObject(branchItemsEntry, entry.itemId);
+          itemEntry.itemid = entry.itemId;
+          itemEntry.itemName = entry.itemData.item || '';
+          itemEntry.barcode = entry.itemData.barcode || '';
+          itemEntry.producttype = entry.itemData.producttype || '';
+          itemEntry.pcategory = pcategory;
+          itemEntry.cp = costPrice;
+          itemEntry.summarydate = dateymd;
+          itemEntry.day = day;
+          itemEntry.month = month;
+          itemEntry.week = week;
+          itemEntry.year = year;
+          applyIncrement(itemEntry, 'sales_qty', entry.pieces);
+          applyIncrement(itemEntry, 'sales_value', itemsales_value);
+          applyIncrement(itemEntry, 'stockout_balance', entry.pieces);
+          applyIncrement(itemEntry, 'stockout_value', stockValueReduction);
+          applyIncrement(itemEntry, 'transaction_count', 1);
+
+          const currentValue = branchStockValues.get(entry.branchId) || {value: 0, name: branchName};
+          currentValue.value += stockValueReduction;
+          branchStockValues.set(entry.branchId, currentValue);
+        }
+
+        // prepare sale doc status and per-item statuses
+        const saleUpdates = ['stockCheckStatus', 'approved', 'stockCheckedAt', admin.firestore.FieldValue.serverTimestamp()];
+        const itemsUpdateFields = buildItemStatusUpdates(items, perItemStatus);
+
+        // flush other writes in chunks
+        for (let i = 0; i < batchWrites.length; i += 450) {
+          const chunk = batchWrites.slice(i, i + 450);
+          const chunkBatch = db.batch();
+          for (const op of chunk) {
+            if (op.type === 'set') chunkBatch.set(op.ref, op.data, op.options || { merge: true });
+            else if (op.type === 'update') chunkBatch.update(op.ref, ...op.args);
           }
-        },
-        { merge: true }
-      );
-      hasUpdates = true;
+          await chunkBatch.commit();
+        }
+
+        // now apply sale doc updates in safe chunks
+        await flushSaleUpdates(saleRef, saleUpdates, itemsUpdateFields);
+        await flushDocWriteStates(summaryDocStates, db);
+        await flushDocWriteStates(stockReportDocStates, db);
+
+        result = { status: 'approved', branchStockValues, branchSalesValues };
+      }
+
+     if (
+       result?.status === "approved" && companyId && (result.branchStockValues.size > 0 || result.branchSalesValues.size > 0)
+
+     ) {
+       const statsRef = db.collection("dashbaord_stats").doc(companyId);
+
+       await db.runTransaction(async (transaction) => {
+         const updateArgs = [];
+
+         let totalStockValue = 0;
+         let totalSales = 0;
+        let totalDiscount = 0;
+         let companyCash = 0;
+         let companyCard = 0;
+         let companyMomo = 0;
+         let companyCredit = 0;
+         let companyBankTransfer = 0;
+
+         // ===========================
+         // Update Stock Values
+         // ===========================
+         for (const [branchId, data] of result.branchStockValues.entries()) {
+           updateArgs.push(
+             new admin.firestore.FieldPath("branchstock", branchId, "stock_value"),
+             admin.firestore.FieldValue.increment(-data.value),
+
+             new admin.firestore.FieldPath(
+               "branchstock",
+               branchId,
+               "branchname"
+             ),
+             data.name
+           );
+
+           totalStockValue += data.value;
+         }
+
+         // ===========================
+         // Update Sales Values
+         // ===========================
+         for (const [branchId, data] of result.branchSalesValues.entries()) {
+           updateArgs.push(
+             new admin.firestore.FieldPath("branchsales",branchId, "sales_value"
+             ),
+             admin.firestore.FieldValue.increment(data.sales),
+
+             new admin.firestore.FieldPath( "branchsales", branchId,"branchname"), data.name,
+
+            new admin.firestore.FieldPath( "branchsales", branchId, "discount" ),
+             admin.firestore.FieldValue.increment( data.discount || 0 ),
+
+             new admin.firestore.FieldPath("branchsales", branchId,"cash"),
+             admin.firestore.FieldValue.increment(data.modes.cash),
+
+             new admin.firestore.FieldPath( "branchsales", branchId, "card"),
+             admin.firestore.FieldValue.increment(data.modes.card),
+
+             new admin.firestore.FieldPath("branchsales", branchId,"momo"),
+
+             admin.firestore.FieldValue.increment(data.modes.momo),
+
+             new admin.firestore.FieldPath("branchsales",branchId,"credit"),
+
+             admin.firestore.FieldValue.increment(data.modes.credit),
+
+             new admin.firestore.FieldPath( "branchsales",branchId,"bank transfer" ),
+
+             admin.firestore.FieldValue.increment(data.modes["bank transfer"]) );
+
+           totalSales += data.sales;
+            totalDiscount += data.discount || 0;
+           companyCash += data.modes.cash;
+           companyCard += data.modes.card;
+           companyMomo += data.modes.momo;
+           companyCredit += data.modes.credit;
+           companyBankTransfer += data.modes["bank transfer"];
+         }
+
+         transaction.set(
+           statsRef,
+           {
+             companyId,updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+             stock_in_total:admin.firestore.FieldValue.increment(-totalStockValue),
+             companysales_value:admin.firestore.FieldValue.increment(totalSales),
+             company_Discount: admin.firestore.FieldValue.increment( totalDiscount ),
+             cash:admin.firestore.FieldValue.increment(companyCash),
+             card:admin.firestore.FieldValue.increment(companyCard),
+             momo:admin.firestore.FieldValue.increment(companyMomo),
+             credit:admin.firestore.FieldValue.increment(companyCredit),
+             "bank_transfer":admin.firestore.FieldValue.increment(companyBankTransfer),
+
+           },
+           { merge: true }
+         );
+
+         if (updateArgs.length > 0) {
+           transaction.update(statsRef, ...updateArgs);
+         }
+       });
+
+       logger.info(
+         `Dashboard stats updated for sale ${saleId}.`
+       );
+     }
+      return null;
     }
 
-    if (hasUpdates) {
-      await batch.commit();
-      const statsRef = db.collection("dashbaord_stats").doc(companyid);
+    // Case 3: Document updated
+    if (after) {
+      const beforeItems = before?.items || {};
+      const afterItems = after.items || {};
+      const updatedBy = resolveUpdatedBy(after);
+      const companyId = resolveSaleCompanyId(after) || resolveSaleCompanyId(before);
 
-      await db.runTransaction(async (transaction) => {
-        let totalStockValue = 0;
-        const updateArgs = [];
+      const allItemKeys = new Set([...Object.keys(beforeItems), ...Object.keys(afterItems)]);
+      const itemIds = new Set();
 
-        for (const [branchId, data] of branchStockValues.entries()) {
-          updateArgs.push(
-            new admin.firestore.FieldPath("branchstock", branchId, "stock_value"),
-            admin.firestore.FieldValue.increment(data.value),
+      // Collect item IDs
+      for (const itemKey of allItemKeys) {
+        const beforeItemData = beforeItems[itemKey] || {};
+        const afterItemData = afterItems[itemKey] || {};
+        const itemId = resolveItemId(afterItemData, itemKey) || resolveItemId(beforeItemData, itemKey);
+        if (itemId) itemIds.add(itemId);
+      }
 
-            new admin.firestore.FieldPath("branchstock", branchId, "branchname"),
-            data.name
-          );
+      // Fetch item documents to get cost prices
+      const itemRefs = Array.from(itemIds).map((id) => db.collection('itemsreg').doc(id));
+      const itemDocs = itemRefs.length > 0 ? await db.getAll(...itemRefs) : [];
+      const itemDocMap = new Map(itemDocs.map((doc) => [doc.id, doc.data() || {}]));
+      const branchStockValues = new Map(); // Track stock value changes per branch
+      const branchSalesValues = new Map();
 
-          totalStockValue += data.value;
+      const cashier = after?.cashier || before?.cashier || "system";
+      const cashierEmail = after?.cashieremail || before?.cashieremail || "system";
+      const summaryId = `${companyId}_${resolveSaleDateParts(after).dateymd}`;
+      const summaryRef = db.collection('salesSummary').doc(summaryId);
+      const stockRef = db.collection('stockreport').doc(summaryId);
+      const modeKey = after?.transMode || before?.transMode || 'cash';
+      const branchId = after?.branchId || before?.branchId || after?.branchid || before?.branchid;
+      const branchName = after?.branchName || before?.branchName || after?.branchname || before?.branchname ||"No branch";
+      const beforeReceipted = before?.reciepted ?? false;
+      const afterReceipted = after?.reciepted ?? false;
+      const receiptJustIssued = beforeReceipted === false && afterReceipted === true;
+      const isReceipted= after.reciepted===true;
+
+      if (cashierEmail.trim() !== "" && receiptJustIssued) {
+          const payments = after?.payments || before?.payments || [];
+          const paymentUpdates = {};
+
+          for (const payment of payments) {
+            const method = (payment.method || "cash").toLowerCase();
+            const amount = toNumber(payment.amount);
+
+            paymentUpdates[method] =admin.firestore.FieldValue.increment(amount);
+          }
+          const cashierAmount = toNumber(after.amountPaid || before.amountPaid || 0);
+          const cashierDiscount = toNumber(after.discount || before.discount || 0);
+          const cashierProfit = toNumber(after.profit || before.profit || 0);
+          const cashierSalesValue = cashierAmount+cashierDiscount;
+          const receiptSummaryState = getOrCreateDocState(summaryDocStates, summaryId, summaryRef, {
+            summarydate: resolveSaleDateParts(after).dateymd,
+            day: resolveSaleDateParts(after).day,
+            month: resolveSaleDateParts(after).month,
+            week: resolveSaleDateParts(after).week,
+            year: resolveSaleDateParts(after).year,
+            companyid: companyId,
+            company: after?.companyname || before?.companyname || companyId,
+            summaryid: summaryId,
+          });
+
+          const staffSummaryRoot = ensureObject(receiptSummaryState.data, 'staffSummary');
+          const staffBranchEntry = ensureObject(staffSummaryRoot, branchId);
+          const staffEntry = ensureObject(staffBranchEntry, cashierEmail);
+          staffEntry.staff = cashier;
+          staffEntry.staffemail = cashierEmail;
+          staffEntry.branchId = branchId;
+          staffEntry.branchName = branchName;
+          staffEntry.summaryid = summaryId;
+          staffEntry.summarydate = resolveSaleDateParts(after).dateymd;
+          applyIncrement(staffEntry, 'staffsales_value', cashierSalesValue);
+          applyIncrement(staffEntry, 'staffdiscount', cashierDiscount);
+          applyIncrement(staffEntry, 'profit', cashierProfit);
+          applyIncrement(staffEntry, 'stafftransaction_count', 1);
+          Object.entries(paymentUpdates).forEach(([method, incrementValue]) => {
+            applyIncrement(staffEntry, method, incrementValue.operand || 0);
+          });
+
+          hasUpdates = true;
+      }
+
+      for (const itemKey of allItemKeys) {
+        const beforeItemData = beforeItems[itemKey] || {};
+        const afterItemData = afterItems[itemKey] || {};
+        const itemId = resolveItemId(afterItemData, itemKey);
+        const branchId = resolveBranchId(after, afterItemData);
+        const isSalesPoint = (after.branchType === 'Sales Point' || after.branchType === 'sales point');
+        const BranchId = isSalesPoint ? after.branchId : resolveBranchId(after, afterItemData);
+        const branchName = isSalesPoint ? after.branchName:resolveBranchName(after, afterItemData, BranchId);
+
+        if (!itemId || !BranchId) {
+          logger.warn(`Sales update ${saleId} missing item/branch for key ${itemKey}`);
+          continue;
         }
 
-        transaction.set(
-          statsRef,
-          {
-            companyId: companyid,
-            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-            stock_in_total: admin.firestore.FieldValue.increment(totalStockValue),
+        //const branchName = resolveBranchName(after, afterItemData, branchId);
+        const beforeQty = getItemQuantity(beforeItemData);
+        const beforePieces = getItemPieces(beforeItemData);
+        const afterQty = getItemQuantity(afterItemData);
+        const afterPieces = getItemPieces(afterItemData);
+        const beforeModeQty = getItemModeQty(beforeItemData);
+        const afterModeQty = getItemModeQty(afterItemData);
+
+        const qtyDifference = afterQty - beforeQty;
+        const piecesDifference = afterPieces - beforePieces;
+        const effectiveModeQty = afterModeQty > 0 ? afterModeQty : beforeModeQty;
+        const netQtyDifference = effectiveModeQty > 0? (piecesDifference / effectiveModeQty): qtyDifference;
+
+        const beforeAmount = toNumber(beforeItemData.amount || beforeItemData.totalAmount || beforeItemData.totalamount || 0);
+        const afterAmount = toNumber(afterItemData.amount || afterItemData.totalAmount || afterItemData.totalamount || 0);
+        const amountDifference = afterAmount - beforeAmount;
+        const beforeDiscount = toNumber(beforeItemData.discount || beforeItemData.Discount || 0);
+        const afterDiscount = toNumber(afterItemData.discount || afterItemData.Discount || 0);
+        const discountDifference = afterDiscount - beforeDiscount;
+        const beforeProfit = toNumber(beforeItemData.profit || 0);
+        const afterProfit = toNumber(afterItemData.profit || 0);
+        const profitDifference = afterProfit - beforeProfit;
+        const salesValue=amountDifference+discountDifference;
+
+        const paymentMode = (
+          after?.transMode ||
+          before?.transMode ||
+          "cash"
+        ).toLowerCase();
+
+        const currentSales = branchSalesValues.get(BranchId) || {
+          sales: 0,
+          discount:0,
+          name: branchName,
+          modes: {
+            cash: 0,
+            card: 0,
+            momo: 0,
+            credit: 0,
+            "bank transfer": 0,
           },
-          { merge: true }
+        };
+
+        currentSales.sales += salesValue;
+        currentSales.discount += discountDifference;
+
+        if (currentSales.modes.hasOwnProperty(paymentMode)) {
+          currentSales.modes[paymentMode] += amountDifference;
+        } else {
+          currentSales.modes.cash += amountDifference;
+        }
+
+        branchSalesValues.set(branchId, currentSales);
+
+        // Calculate stock value change (use cost price)
+        const itemDocData = itemDocMap.get(itemId) || {};
+        const costPrice = toNumber(itemDocData.cp || afterItemData.cp || beforeItemData.cp || 0);
+        const stockValueChange = costPrice * qtyDifference;
+        const producttype=itemDocData.producttype ||afterItemData.producttype||beforeItemData.producttype || 'no producttype set'
+        const isService = producttype.toLowerCase() === "service";
+       if (qtyDifference === 0 && piecesDifference === 0 && amountDifference === 0) continue;
+
+        const itemRegRef = db.collection("itemsreg").doc(itemId);
+        batch.update(
+          itemRegRef,
+          'sales_value', admin.firestore.FieldValue.increment(salesValue),
+          'sales_qty', admin.firestore.FieldValue.increment(piecesDifference),
+          ...branchBalanceUpdateArgs(branchId, {
+            stockout_qty: admin.firestore.FieldValue.increment(qtyDifference),
+            stockout_pieces: admin.firestore.FieldValue.increment(piecesDifference),
+            netpieces: admin.firestore.FieldValue.increment(-piecesDifference),
+            sales_value: admin.firestore.FieldValue.increment(salesValue),
+            stock_value: admin.firestore.FieldValue.increment(-stockValueChange), // Reduce stock value
+            name: branchName,
+            lastupdate: admin.firestore.FieldValue.serverTimestamp(),
+            updatedby: updatedBy,
+          }),
+          'lastModified',
+          admin.firestore.FieldValue.serverTimestamp(),
+          'lastSaleId',
+          saleId,
         );
 
-        if (updateArgs.length > 0) {
-          transaction.update(statsRef, ...updateArgs);
-        }
-      });
-      const opType = isDelete ? 'DELETE' : isCreate ? 'CREATE' : 'UPDATE';
-      logger.info(`Processed ${opType}: salesreturn ${returnId} branchbalance sync.`);
+        // Accumulate stock value changes per branch
+        const currentValue = branchStockValues.get(branchId) || {value: 0, name: branchName};
+        currentValue.value += stockValueChange;
+        branchStockValues.set(branchId, currentValue);
 
+
+        const entryCategory = itemDocData.pcategory || afterItemData.pcategory || beforeItemData.pcategory || 'no category set';
+        const staffEmail = after?.staffemail || before?.staffemail || after?.cashieremail || before?.cashieremail || 'system';
+
+        const summaryState = getOrCreateDocState(summaryDocStates, summaryId, summaryRef, {
+          summarydate: resolveSaleDateParts(after).dateymd,
+          day: resolveSaleDateParts(after).day,
+          month: resolveSaleDateParts(after).month,
+          week: resolveSaleDateParts(after).week,
+          year: resolveSaleDateParts(after).year,
+          companyid: companyId,
+          company: after?.companyname || before?.companyname || companyId,
+          summaryid: summaryId,
+        });
+
+        applyIncrement(summaryState.data, modeKey, amountDifference);
+        applyIncrement(summaryState.data, 'companysales_value', salesValue);
+        applyIncrement(summaryState.data, 'companysales_qty', piecesDifference);
+        applyIncrement(summaryState.data, 'company_Discount', discountDifference);
+        applyIncrement(summaryState.data, 'companyCostof_goods', stockValueChange);
+        applyIncrement(summaryState.data, 'company_profit', profitDifference);
+        applyIncrement(summaryState.data, 'companytransaction_count', 1);
+
+        const branchSummaryRoot = ensureObject(summaryState.data, 'branchSummary');
+        const branchSummaryEntry = ensureObject(branchSummaryRoot, BranchId);
+        branchSummaryEntry.branchId = BranchId;
+        branchSummaryEntry.branchName = branchName;
+        branchSummaryEntry.summaryid = summaryId;
+        branchSummaryEntry.summarydate = resolveSaleDateParts(after).dateymd;
+        branchSummaryEntry.day = resolveSaleDateParts(after).day;
+        branchSummaryEntry.month = resolveSaleDateParts(after).month;
+        branchSummaryEntry.week = resolveSaleDateParts(after).week;
+        branchSummaryEntry.year = resolveSaleDateParts(after).year;
+        applyIncrement(branchSummaryEntry, 'branchsales_value', salesValue);
+        applyIncrement(branchSummaryEntry, 'branchsales_qty', piecesDifference);
+        applyIncrement(branchSummaryEntry, 'branch_Discount', discountDifference);
+        applyIncrement(branchSummaryEntry, modeKey, amountDifference);
+        applyIncrement(branchSummaryEntry, 'branch_profit', profitDifference);
+        applyIncrement(branchSummaryEntry, 'branchtransaction_count', 1);
+        applyIncrement(branchSummaryEntry, 'branchCostof_goods', stockValueChange);
+
+        const branchItemsRoot = ensureObject(branchSummaryEntry, 'items');
+        const branchItemEntry = ensureObject(branchItemsRoot, itemId);
+        branchItemEntry.itemid = itemId;
+        branchItemEntry.itemName = afterItemData.item || beforeItemData.item || itemId;
+        branchItemEntry.barcode = afterItemData.barcode || beforeItemData.barcode || '';
+        branchItemEntry.pcategory = entryCategory;
+        branchItemEntry.summaryid = summaryId;
+        branchItemEntry.summarydate = resolveSaleDateParts(after).dateymd;
+        branchItemEntry.day = resolveSaleDateParts(after).day;
+        branchItemEntry.month = resolveSaleDateParts(after).month;
+        branchItemEntry.week = resolveSaleDateParts(after).week;
+        branchItemEntry.year = resolveSaleDateParts(after).year;
+        branchItemEntry.branchId = branchId;
+        branchItemEntry.branchName = branchName;
+        applyIncrement(branchItemEntry, modeKey, amountDifference);
+        applyIncrement(branchItemEntry, 'sales_qty', piecesDifference);
+        applyIncrement(branchItemEntry, 'sales_value', salesValue);
+        applyIncrement(branchItemEntry, 'discount', discountDifference);
+        applyIncrement(branchItemEntry, 'costof_goods', stockValueChange);
+        applyIncrement(branchItemEntry, 'profit', profitDifference);
+        applyIncrement(branchItemEntry, 'transaction_count', 1);
+
+   if (isReceipted)
+    {
+        const staffSummaryRoot = ensureObject(summaryState.data, 'staffSummary');
+        const staffBranchEntry = ensureObject(staffSummaryRoot, BranchId);
+        const staffEntry = ensureObject(staffBranchEntry, staffEmail);
+        staffEntry.staffemail = staffEmail;
+        staffEntry.branchId = branchId;
+        staffEntry.branchName = branchName;
+        staffEntry.summaryid = summaryId;
+        staffEntry.summarydate = resolveSaleDateParts(after).dateymd;
+        applyIncrement(staffEntry, 'staffsales_value', salesValue);
+        applyIncrement(staffEntry, 'staffsales_qty', piecesDifference);
+        applyIncrement(staffEntry, 'staffdiscount', discountDifference);
+        applyIncrement(staffEntry, modeKey, amountDifference);
+        applyIncrement(staffEntry, 'profit', profitDifference);
+        applyIncrement(staffEntry, 'stafftransaction_count', 1);
+        applyIncrement(staffEntry, 'staffCostof_goods', stockValueChange);
+}
+        const stockReportState = getOrCreateDocState(stockReportDocStates, summaryId, stockRef, {
+          summarydate: resolveSaleDateParts(after).dateymd,
+          companyid: companyId,
+          day: resolveSaleDateParts(after).day,
+          month: resolveSaleDateParts(after).month,
+          week: resolveSaleDateParts(after).week,
+          year: resolveSaleDateParts(after).year,
+          summaryid: summaryId,
+        });
+
+        applyIncrement(stockReportState.data, 'companytransaction_count', 1);
+
+        const branchBalanceRoot = ensureObject(stockReportState.data, 'branchbalance');
+        const branchBalanceEntry = ensureObject(branchBalanceRoot, branchId);
+        branchBalanceEntry.branchId = branchId;
+        branchBalanceEntry.branchName = branchName;
+        branchBalanceEntry.summaryid = summaryId;
+        branchBalanceEntry.summarydate = resolveSaleDateParts(after).dateymd;
+        branchBalanceEntry.day = resolveSaleDateParts(after).day;
+        branchBalanceEntry.month = resolveSaleDateParts(after).month;
+        branchBalanceEntry.week = resolveSaleDateParts(after).week;
+        branchBalanceEntry.year = resolveSaleDateParts(after).year;
+        applyIncrement(branchBalanceEntry, 'branchsales_value', salesValue);
+        applyIncrement(branchBalanceEntry, 'branchsales_qty', piecesDifference);
+        applyIncrement(branchBalanceEntry, 'branchstockout_balance', piecesDifference);
+        applyIncrement(branchBalanceEntry, 'branchstockout_value', stockValueChange);
+        applyIncrement(branchBalanceEntry, 'branchtransaction_count', 1);
+
+        const itemsRoot = ensureObject(stockReportState.data, 'items');
+        const branchItemsEntry = ensureObject(itemsRoot, branchId);
+        branchItemsEntry.branchId = branchId;
+        branchItemsEntry.branchName = branchName;
+        branchItemsEntry.summaryid = summaryId;
+        branchItemsEntry.summarydate = resolveSaleDateParts(after).dateymd;
+        branchItemsEntry.day = resolveSaleDateParts(after).day;
+        branchItemsEntry.month = resolveSaleDateParts(after).month;
+        branchItemsEntry.week = resolveSaleDateParts(after).week;
+        branchItemsEntry.year = resolveSaleDateParts(after).year;
+        const itemEntry = ensureObject(branchItemsEntry, itemId);
+        itemEntry.itemid = itemId;
+        itemEntry.itemName = afterItemData.item || beforeItemData.item || itemId;
+        itemEntry.barcode = afterItemData.barcode || beforeItemData.barcode || '';
+        itemEntry.summarydate = resolveSaleDateParts(after).dateymd;
+        itemEntry.day = resolveSaleDateParts(after).day;
+        itemEntry.month = resolveSaleDateParts(after).month;
+        itemEntry.week = resolveSaleDateParts(after).week;
+        itemEntry.year = resolveSaleDateParts(after).year;
+        applyIncrement(itemEntry, 'sales_qty', piecesDifference);
+        applyIncrement(itemEntry, 'sales_value', salesValue);
+        applyIncrement(itemEntry, 'stockout_balance', piecesDifference);
+        applyIncrement(itemEntry, 'stockout_value', stockValueChange);
+        applyIncrement(itemEntry, 'transaction_count', 1);
+
+        hasUpdates = true;
+      }
+// Update customer credit balance when a sale is edited
+const beforeIsCredit = (before?.transMode || "").toLowerCase() === "credit"||(before?.transMode || "").toLowerCase() === "credit sales";
+const afterIsCredit = (after?.transMode || "").toLowerCase() === "credit"||(after?.transMode || "").toLowerCase() === "credit sales";
+
+const beforeAmountPaid = toNumber(before?.totalamount ?? before?.amountPaid ?? 0);
+const afterAmountPaid = toNumber(after?.totalamount ?? after?.amountPaid ?? 0);
+
+if (after?.customerId) {
+  const customerRef = db.collection("customers").doc(after.customerId);
+
+  // Credit -> Credit
+  if (beforeIsCredit && afterIsCredit) {
+    const difference = afterAmountPaid - beforeAmountPaid;
+
+    if (difference !== 0) {
+      batch.set(
+        customerRef,
+        {
+          creditBalance: admin.firestore.FieldValue.increment(difference),
+          lastupdate: admin.firestore.FieldValue.serverTimestamp(),
+          updatedby: updatedBy,
+        },
+        { merge: true }
+      );
+    }
+  }
+
+  // Cash/Other -> Credit
+  else if (!beforeIsCredit && afterIsCredit) {
+    batch.set(
+      customerRef,
+      {
+        creditBalance: admin.firestore.FieldValue.increment(afterAmountPaid),
+        lastupdate: admin.firestore.FieldValue.serverTimestamp(),
+        updatedby: updatedBy,
+      },
+      { merge: true }
+    );
+  }
+
+  // Credit -> Cash/Other
+  else if (beforeIsCredit && !afterIsCredit) {
+    batch.set(
+      customerRef,
+      {
+        creditBalance: admin.firestore.FieldValue.increment(-beforeAmountPaid),
+        lastupdate: admin.firestore.FieldValue.serverTimestamp(),
+        updatedby: updatedBy,
+      },
+      { merge: true }
+    );
+  }
+}
+      if (hasUpdates) {
+        await batch.commit();
+        await flushDocWriteStates(summaryDocStates, db);
+        await flushDocWriteStates(stockReportDocStates, db);
+
+        // Update dashboard_stats branchstock for each affected branch
+// Update dashboard_stats
+if (
+  companyId &&
+  (branchStockValues.size > 0 || branchSalesValues.size > 0)
+) {
+  const statsRef = db.collection("dashbaord_stats").doc(companyId);
+
+  await db.runTransaction(async (transaction) => {
+    const updateArgs = [];
+
+    let totalStockValue = 0;
+    let totalSales = 0;
+    let companyDiscount=0;
+    let companyCash = 0;
+    let companyCard = 0;
+    let companyMomo = 0;
+    let companyCredit = 0;
+    let companyBankTransfer = 0;
+
+    // ==========================
+    // STOCK CHANGES
+    // ==========================
+    for (const [branchId, data] of branchStockValues.entries()) {
+      updateArgs.push(
+        new admin.firestore.FieldPath(
+          "branchstock",
+          branchId,
+          "stock_value"
+        ),
+        admin.firestore.FieldValue.increment(-data.value),
+
+        new admin.firestore.FieldPath(
+          "branchstock",
+          branchId,
+          "branchname"
+        ),
+        data.name
+      );
+
+      totalStockValue += data.value;
+    }
+
+    // ==========================
+    // SALES CHANGES
+    // ==========================
+    for (const [branchId, data] of branchSalesValues.entries()) {
+      updateArgs.push(
+        new admin.firestore.FieldPath(
+          "branchsales",
+          branchId,
+          "sales_value"
+        ),
+        admin.firestore.FieldValue.increment(data.sales),
+
+        new admin.firestore.FieldPath(
+          "branchsales",
+          branchId,
+          "branchname"
+        ),
+        data.name,
+
+        new admin.firestore.FieldPath(
+          "branchsales",
+          branchId,
+          "cash"
+        ),
+        admin.firestore.FieldValue.increment(data.modes.cash),
+      new admin.firestore.FieldPath(
+          "branchsales",
+          branchId,
+          "discount"
+        ),
+        admin.firestore.FieldValue.increment(data.discount),
+
+        new admin.firestore.FieldPath(
+          "branchsales",
+          branchId,
+          "card"
+        ),
+        admin.firestore.FieldValue.increment(data.modes.card),
+
+        new admin.firestore.FieldPath(
+          "branchsales",
+          branchId,
+          "momo"
+        ),
+        admin.firestore.FieldValue.increment(data.modes.momo),
+
+        new admin.firestore.FieldPath(
+          "branchsales",
+          branchId,
+          "credit"
+        ),
+        admin.firestore.FieldValue.increment(data.modes.credit),
+
+        new admin.firestore.FieldPath(
+          "branchsales",
+          branchId,
+          "bank transfer"
+        ),
+        admin.firestore.FieldValue.increment(
+          data.modes["bank transfer"]
+        )
+      );
+
+      totalSales += data.sales;
+      companyDiscount+=data.discount;
+      companyCash += data.modes.cash;
+      companyCard += data.modes.card;
+      companyMomo += data.modes.momo;
+      companyCredit += data.modes.credit;
+      companyBankTransfer += data.modes["bank transfer"];
+    }
+
+    transaction.set(
+      statsRef,
+      {
+        companyId,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+
+        stock_in_total: admin.firestore.FieldValue.increment(-totalStockValue),
+
+        companysales_value: admin.firestore.FieldValue.increment(totalSales),
+
+        cash: admin.firestore.FieldValue.increment(companyCash),
+
+        card: admin.firestore.FieldValue.increment(companyCard),
+
+        momo: admin.firestore.FieldValue.increment(companyMomo),
+
+        credit:admin.firestore.FieldValue.increment(companyCredit),
+        company_Discount:admin.firestore.FieldValue.increment(companyDiscount),
+
+        "bank transfer":
+          admin.firestore.FieldValue.increment(companyBankTransfer),
+      },
+      { merge: true }
+    );
+
+    if (updateArgs.length > 0) {
+      transaction.update(statsRef, ...updateArgs);
+    }
+  });
+
+  logger.info(
+    `Dashboard stats updated after editing sale ${saleId}.`
+  );
+}      }
     }
 
     return null;
   } catch (error) {
-    logger.error(`Error syncing salesreturn ${returnId} to itemsreg:`, error);
+    logger.error(`Error syncing sales ${saleId} to itemsreg stockout:`, error);
     return null;
   }
 });

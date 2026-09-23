@@ -27,10 +27,6 @@ class _ReceivepaymentsPageState extends State<ReceivepaymentsPage> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final provider = Provider.of<CashierProvider>(context, listen: false);
-      await provider.loadcustomers();
-    });
   }
 
   @override
@@ -39,8 +35,9 @@ class _ReceivepaymentsPageState extends State<ReceivepaymentsPage> {
     super.dispose();
   }
 
-  void _performSearch(CashierProvider provider) {
+  _performSearch(CashierProvider provider) async {
     final query = _searchController.text.trim();
+
     setState(() {
       _isSearching = true;
     });
@@ -56,12 +53,12 @@ class _ReceivepaymentsPageState extends State<ReceivepaymentsPage> {
     // Search through debtors
     Debtor? foundDebtor;
     try {
-      foundDebtor = provider.filteredDebtors.firstWhere(
-            (debtor) =>
-        debtor.name.toLowerCase().contains(query.toLowerCase()) ||
-            debtor.contact.contains(query) ||
-            debtor.id.toLowerCase().contains(query.toLowerCase()),
-      );
+       final results = await provider.loadcustomers(query);
+
+        foundDebtor = results.isNotEmpty ? results.first : null;
+
+       print('Found debtor: ${foundDebtor?.name}');
+
     } catch (e) {
       foundDebtor = null;
     }
@@ -89,7 +86,6 @@ class _ReceivepaymentsPageState extends State<ReceivepaymentsPage> {
               IconButton(
                 icon: const Icon(Icons.refresh),
                 onPressed: () async {
-                  await provider.loadDebtors();
                   setState(() {
                     _selectedDebtor = null;
                     _searchController.clear();
@@ -104,30 +100,6 @@ class _ReceivepaymentsPageState extends State<ReceivepaymentsPage> {
               child: Column(
                 children: [
                   // Summary Cards
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: _buildSummaryCard(
-                            'Total Outstanding',
-                            'GHS ${NumberFormat('#,##0.00').format(provider.totalOutstandingBalance)}',
-                            Icons.account_balance_wallet,
-                            Colors.white,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: _buildSummaryCard(
-                            'Total Collected',
-                            'GHS ${NumberFormat('#,##0.00').format(provider.totalCollected)}',
-                            Icons.payments,
-                            Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
                   const SizedBox(height: 12),
 
                   // Search Bar with Search Button
@@ -137,6 +109,7 @@ class _ReceivepaymentsPageState extends State<ReceivepaymentsPage> {
                       children: [
                         Expanded(
                           child: Container(
+                            width: 200,
                             decoration: BoxDecoration(
                               color: const Color(0xFF1E3A5F),
                               borderRadius: BorderRadius.circular(12),
@@ -146,7 +119,7 @@ class _ReceivepaymentsPageState extends State<ReceivepaymentsPage> {
                               style: const TextStyle(color: Colors.white),
                               onSubmitted: (value) => _performSearch(provider),
                               decoration: InputDecoration(
-                                hintText: 'Search by name, phone, or ID...',
+                                hintText: 'Search by phone number',
                                 hintStyle: TextStyle(color: Colors.grey.shade400),
                                 prefixIcon: const Icon(Icons.search, color: Colors.grey),
                                 border: InputBorder.none,
@@ -197,23 +170,6 @@ class _ReceivepaymentsPageState extends State<ReceivepaymentsPage> {
                   ),
                   const SizedBox(height: 8),
 
-                  // Filter Chips
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Row(
-                      children: [
-                        _buildFilterChip('All', 'All', provider),
-                        const SizedBox(width: 8),
-                        _buildFilterChip('Unpaid', 'Unpaid', provider),
-                        const SizedBox(width: 8),
-                        _buildFilterChip('Partial', 'Partial', provider),
-                        const SizedBox(width: 8),
-                        _buildFilterChip('Paid', 'Paid', provider),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
 
                   // Single Record Display
                   Expanded(
@@ -245,17 +201,17 @@ class _ReceivepaymentsPageState extends State<ReceivepaymentsPage> {
           const SizedBox(height: 16),
           Text(
             hasData
-                ? 'Search for a debtor to view details'
-                : 'No debtors found',
+                ? 'Search for a customer to recieve deposit payment'
+                : 'No customer found',
             style: TextStyle(color: Colors.grey.shade400, fontSize: 16),
           ),
-          if (hasData) ...[
-            const SizedBox(height: 8),
-            Text(
-              '${provider.filteredDebtors.length} debtors available',
-              style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
-            ),
-          ],
+          // if (hasData) ...[
+          //   const SizedBox(height: 8),
+          //   Text(
+          //     '${provider.filteredDebtors.length} debtors available',
+          //     style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+          //   ),
+          // ],
         ],
       ),
     );
@@ -664,8 +620,7 @@ class DebtorDetailCard extends StatelessWidget {
   }
 }
 
-// The rest of the classes (PaymentFormDialog, DebtorDetailsDialog, AddDebtorDialog)
-// remain unchanged from the original code...
+
 class DebtorCard extends StatelessWidget {
   final Debtor debtor;
   final VoidCallback onReceivePayment;
