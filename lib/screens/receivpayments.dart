@@ -103,13 +103,14 @@ class _ReceivepaymentsPageState extends State<ReceivepaymentsPage> {
                   const SizedBox(height: 12),
 
                   // Search Bar with Search Button
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Container(
-                            width: 200,
+                  Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 400,
                             decoration: BoxDecoration(
                               color: const Color(0xFF1E3A5F),
                               borderRadius: BorderRadius.circular(12),
@@ -121,14 +122,22 @@ class _ReceivepaymentsPageState extends State<ReceivepaymentsPage> {
                               decoration: InputDecoration(
                                 hintText: 'Search by phone number',
                                 hintStyle: TextStyle(color: Colors.grey.shade400),
-                                prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                                prefixIcon: const Icon(
+                                  Icons.search,
+                                  color: Colors.grey,
+                                ),
                                 border: InputBorder.none,
-                                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                                contentPadding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                ),
                                 filled: true,
                                 fillColor: const Color(0xFF22304A),
                                 suffixIcon: _searchController.text.isNotEmpty
                                     ? IconButton(
-                                  icon: const Icon(Icons.clear, color: Colors.grey),
+                                  icon: const Icon(
+                                    Icons.clear,
+                                    color: Colors.grey,
+                                  ),
                                   onPressed: () {
                                     setState(() {
                                       _searchController.clear();
@@ -140,32 +149,44 @@ class _ReceivepaymentsPageState extends State<ReceivepaymentsPage> {
                               ),
                             ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        ElevatedButton(
-                          onPressed: _isSearching ? null : () => _performSearch(provider),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.blue.shade700,
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
+
+                          const SizedBox(width: 8),
+
+                          ElevatedButton(
+                            onPressed: _isSearching
+                                ? null
+                                : () => _performSearch(provider),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue.shade700,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 14,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                            ),
+                            child: _isSearching
+                                ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                                : const Text(
+                              'Search',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
-                          child: _isSearching
-                              ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          )
-                              : const Text(
-                            'Search',
-                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
