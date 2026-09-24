@@ -103,23 +103,7 @@ class _ReceivablesListPageState extends State<ReceivablesListPage> {
                         ),
                       ),
                       const SizedBox(height: 8),
-                      // Filter Chips
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Row(
-                          children: [
-                            _buildFilterChip('All', 'All'),
-                            const SizedBox(width: 8),
-                            _buildFilterChip('Unpaid', 'Unpaid'),
-                            const SizedBox(width: 8),
-                            _buildFilterChip('Partial', 'Partial'),
-                            const SizedBox(width: 8),
-                            _buildFilterChip('Paid', 'Paid'),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
+
                       provider.filteredDebtors.isEmpty
                           ? Center(
                         child: Column(
@@ -207,23 +191,6 @@ class _ReceivablesListPageState extends State<ReceivablesListPage> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildFilterChip(String label, String value) {
-    final provider = Provider.of<CashierProvider>(context);
-    return FilterChip(
-      label: Text(label),
-      selected: provider.statusFilter == value,
-      onSelected: (selected) {
-        provider.setStatusFilter(value);
-      },
-      backgroundColor: const Color(0xFF1E3A5F),
-      selectedColor: Colors.blue.shade700,
-      labelStyle: TextStyle(
-        color: provider.statusFilter == value ? Colors.white : Colors.grey.shade300,
-      ),
-      checkmarkColor: Colors.white,
     );
   }
 
@@ -363,7 +330,7 @@ class DebtorCard extends StatelessWidget {
                       value: debtor.paymentProgress,
                       backgroundColor: Colors.grey.shade800,
                       color: debtor.statusColor,
-                      minHeight: 8,
+                      minHeight: 5,
                     ),
                   ),
                 ],
@@ -376,7 +343,7 @@ class DebtorCard extends StatelessWidget {
                   _buildAmountColumn('Amount Paid', 'GHS ${NumberFormat('#,##0.00').format(debtor.amountpaid)}', Colors.white),
                   _buildAmountColumn('Balance', debtor.balance < 0 ? '(GHS ${NumberFormat('#,##0.00').format(debtor.balance.abs())})'
                         : 'GHS ${NumberFormat('#,##0.00').format(debtor.balance)}',
-                    Colors.orange.shade400,
+                    Colors.white,
                   ),                ],
               ),
               const SizedBox(height: 12),
@@ -752,8 +719,6 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
 
   Future<void> _submitPayment() async {
     if (!_formKey.currentState!.validate()) return;
-
-    // Validate MOMO transactions if payment method is MOMO
     if (paymentMethod.toLowerCase() == 'momo' && momoType=='merchant') {
       if (!validateMomoTransactions()) {
         return;
@@ -915,11 +880,13 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
       builder: (context, provider, _) {
         String invoiceId=widget.debtor.id;
         String? selectedNetwork = provider.selectedNetworks[invoiceId];
-        paymentMethod = provider.selectedPaymentMethods[invoiceId] ?? 'cash';
+        paymentMethod = provider.selectedPaymentMethods[invoiceId] ?? 'select payment method';
     return Container(
       height: MediaQuery.of(context).size.height * 0.85,
+      width: MediaQuery.of(context).size.height * 0.65,
       decoration: const BoxDecoration(
         color: Color(0xFF0A1A2F),
+
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
@@ -936,68 +903,65 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
           ),
           const SizedBox(height: 20),
           // Header
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade800,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.payment, color: Colors.white),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Receive Payment',
-                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
-                      ),
-                      Text(
-                        'Debtor: ${widget.debtor.name}',
-                        style: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+
+          Center(
+          child: ConstrainedBox(
+          constraints: const BoxConstraints(
+          maxWidth: 500,
           ),
-          const SizedBox(height: 20),
-          // Balance info
+          child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+          children: [
           Container(
-            margin: const EdgeInsets.symmetric(horizontal: 20),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.orange.shade900.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.orange.shade700),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Current Balance:',
-                  style: TextStyle(color: Colors.white, fontSize: 16),
-                ),
-                Text(
-                  'GHS ${NumberFormat('#,##0.00').format(widget.debtor.balance)}',
-                  style: const TextStyle(
-                    color: Colors.orange,
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+          color: Colors.blue.shade800,
+          borderRadius: BorderRadius.circular(12),
           ),
-          const SizedBox(height: 20),
-          // Form
-          Expanded(
+          child: const Icon(
+          Icons.payment,
+          color: Colors.white,
+        ),
+        ),
+
+        const SizedBox(width: 12),
+
+        Expanded(
+        child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+        const Text(
+        'Receive Payment',
+        style: TextStyle(
+        fontSize: 14,
+
+        color: Colors.white,
+        ),
+        ),
+
+        Text(
+        'Debtor: ${widget.debtor.name}',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+        color: Colors.grey.shade400,
+        fontSize: 14,
+        ),
+        ),
+        ],
+        ),
+        ),
+        ],
+        ),
+        ),
+        ),
+        ),
+
+        Flexible(
+        child: Center(
+        child: ConstrainedBox(constraints:
+        const BoxConstraints(maxWidth: 500, ),
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 20),
               child: Form(
@@ -1005,8 +969,19 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Container( margin: const EdgeInsets.symmetric(vertical: 4, ),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          //color: Colors.orange.shade900.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all( color: Colors.white, ), ),
+                        child: Row( mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text( 'Current Balance:', style: TextStyle( color: Colors.white, fontSize: 14, ), ),
+                            Flexible( child: Text( 'GHS ${NumberFormat('#,##0.00').format(widget.debtor.balance)}', textAlign: TextAlign.end, overflow: TextOverflow.ellipsis,
+                              style: const TextStyle( color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, ), ), ), ], ), ),
+                    const SizedBox(height: 5),
                     // Amount
-                    const Text('Amount to Pay *', style: TextStyle(color: Colors.grey,fontSize: 12)),
                     TextFormField(
                       controller: _amountController,
                       keyboardType: TextInputType.numberWithOptions(decimal: true),
@@ -1015,6 +990,8 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                       ],
                       style: const TextStyle(color: Colors.white),
                       decoration: const InputDecoration(
+                          labelText: 'Amount to pay',
+                          labelStyle: const TextStyle(color: Colors.white70),
                         prefixText: 'GHS ',
                         prefixStyle: TextStyle(color: Colors.white),
                         hintText: '0.00',
@@ -1035,9 +1012,8 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                         return null;
                       },
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 8),
                     // Payment Method
-                    const Text('Payment Method *', style: TextStyle(color: Colors.grey,fontSize: 12)),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
@@ -1047,6 +1023,13 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
                           value: _paymentMethods.contains(paymentMethod) ? paymentMethod : null,
+                          hint: const Text(
+                            'Select payment method',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
+                            ),
+                          ),
                           dropdownColor: const Color(0xFF1E3A5F),
                           style: const TextStyle(color: Colors.white),
                           isExpanded: true,
@@ -1088,7 +1071,6 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                                   if (value != null && value.isNotEmpty) {
                                     print('Selected payment method: $methodKey');
                                     _linkedAccounts = provider.linkedAccounts[methodKey]?.toList() ?? [];
-                                    // _linkedAccounts = provider.linkedAccounts[value]!.toList()?? [];
                                   }
                                 },
 
@@ -1098,11 +1080,11 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 8),
        // "hubtel" or "merchant"
 
-        if (paymentMethod.toLowerCase() == 'momo') ...[
-          const SizedBox(height: 5),
+                    if (paymentMethod.toLowerCase() == 'momo') ...[
+          const SizedBox(height: 8),
         // Select Network
         Container(
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -1199,12 +1181,12 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
         ],
 
 //  Conditionally show transaction fields only if Merchant is selected
-        if (paymentMethod.toLowerCase() == 'momo' && momoType == 'merchant') ...[
-          const SizedBox(height: 5),
-        _buildMomoTransactionFields(),
+                    if (paymentMethod.toLowerCase() == 'momo' && momoType == 'merchant') ...[
+                    const SizedBox(height: 5),
+                    _buildMomoTransactionFields(),
         ],
                     if (paymentMethod.toLowerCase() == 'momo' && momoType == 'hubtel') ...[
-                      const SizedBox(height: 5),
+                      const SizedBox(height: 8),
                       TextFormField(
                         controller: _contactController,
                         style: TextStyle(color: Colors.white70),
@@ -1277,17 +1259,15 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                       ),
 
                     ],
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 8),
                     _buildLinkedAccountDropdown(),
-                    const SizedBox(height: 5),
-                    // Date
-                    const Text('Payment Date *', style: TextStyle(color: Colors.grey,fontSize: 12)),
+                    const SizedBox(height: 7),
                     InkWell(
                       onTap: () async {
                         DateTime? picked = await showDatePicker(
                           context: context,
                           initialDate: _selectedDate,
-                          firstDate: DateTime(2020),
+                          firstDate: DateTime(2000),
                           lastDate: DateTime.now(),
                           builder: (context, child) {
                             return Theme(
@@ -1322,15 +1302,17 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 8),
 
                     // Note/Reference
-                    const Text('Narration', style: TextStyle(color: Colors.grey,fontSize: 12)),
+                   // const Text('Narration', style: TextStyle(color: Colors.grey,fontSize: 12)),
 
                     TextFormField(
                       controller: _referenceController,
                       style: const TextStyle(color: Colors.white),
                       decoration: const InputDecoration(
+                        labelText: 'Narration',
+                        labelStyle: const TextStyle(color: Colors.white70),
                         hintText: 'Invoice number, description, etc.',
                         hintStyle: TextStyle(color: Colors.grey),
                         filled: true,
@@ -1377,8 +1359,8 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                 ),
               ),
             ),
-          ),
-        ],
+          ),)
+        )],
       ),
     );
   });
@@ -1690,7 +1672,7 @@ class DebtorDetailsDialog extends StatelessWidget {
                           debtor.balance < 0
                               ? '(GHS ${NumberFormat('#,##0.00').format(debtor.balance.abs())})'
                               : 'GHS ${NumberFormat('#,##0.00').format(debtor.balance)}',
-                          Colors.orange,bold: true,
+                          Colors.white,bold: true,
                         ),
                       ],
                     ),

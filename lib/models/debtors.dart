@@ -163,7 +163,7 @@ class Debtor {
   Color get statusColor {
     switch (status) {
       case 'Paid':
-        return Colors.green;
+        return Colors.green.shade400;
       case 'Partial':
         return Colors.orange;
       default:
