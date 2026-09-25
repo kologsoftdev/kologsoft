@@ -25,8 +25,7 @@ void _listenToSalesSummary() {
   });
 }
 
-  // Real-time weekly sales comparison stream.
-  // Uses company-level `cash` + `credit` when user is super admin (or no branch selected),
+
   // otherwise uses `branchSummary` entries for branch-level totals.
   Stream<WeeklySalesComparison> weeklySalesComparisonStream({String? selectedBranch}) {
     String _toDateOnly(DateTime d) =>

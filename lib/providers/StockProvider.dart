@@ -632,6 +632,7 @@ List<Map<String,dynamic>> communities=[];
     final summaryId = "${companyId}_$today";
 
     final dailyRef = db.collection('stockreport').doc(summaryId);
+
     final statsRef = db.collection('dashbaord_stats').doc(companyId);
 
     final batch = db.batch();

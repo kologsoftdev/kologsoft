@@ -9177,6 +9177,13 @@ print("Fetched ${branches.length} branches for company $companyid");
     });
   }
 
+updateStockreorderBalance({required int companyCount, required String branchid,branchCount}) async {
+   await db .collection("dashbaord_stats").doc(companyid).update({
+    "companyreorderCount":  companyCount,
+     "branchreorderCount.$branchid": branchCount,
 
+  });
+
+}
 
 }
