@@ -538,6 +538,7 @@
 //   }
 // }
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:kologsoft/models/customerreg_model.dart';
@@ -561,6 +562,8 @@ class _CustomerRegistrationState extends State<CustomerRegistration> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _contactController = TextEditingController();
   final TextEditingController _creditlimitController = TextEditingController();
+  final TextEditingController _creditbalanceController = TextEditingController();
+  final TextEditingController _amountpaidController = TextEditingController();
 
   String? _selectedCustomerType;
   String? _selectedpaymentduration;
@@ -583,7 +586,9 @@ class _CustomerRegistrationState extends State<CustomerRegistration> {
       final customadata = widget.data!;
       _nameController.text = customadata.name;
       _contactController.text = customadata.contact;
-      _creditlimitController.text = customadata.creditlimit ?? '';
+      _creditlimitController.text = customadata.creditlimit ?? '0';
+      _creditbalanceController.text = customadata.creditBalance ?? '0';
+      _amountpaidController.text = customadata.amountpaid ?? '0';
 
       final customerType = customadata.customertype;
       if (_customerTypes.contains(customerType)) {
@@ -615,6 +620,8 @@ class _CustomerRegistrationState extends State<CustomerRegistration> {
     _nameController.dispose();
     _contactController.dispose();
     _creditlimitController.dispose();
+    _creditbalanceController.dispose();
+    _amountpaidController.dispose();
     super.dispose();
   }
 
@@ -903,6 +910,8 @@ class _CustomerRegistrationState extends State<CustomerRegistration> {
                                             setState(() => _loading = true);
                                             String name= _nameController.text.trim();
                                             String contact= _contactController.text.trim();
+                                            String creditbalance= _creditbalanceController.text.trim();
+                                            String amountpaid= _creditbalanceController.text.trim();
                                             String customertype= _selectedCustomerType!;
                                             String creditlimit = isCreditCustomer ? _creditlimitController.text.trim() : '';
                                             String paymentduration = isCreditCustomer ? _selectedpaymentduration ?? '' : '';
@@ -953,6 +962,7 @@ class _CustomerRegistrationState extends State<CustomerRegistration> {
                                                     creditlimit: creditlimit,
                                                     paymentduration: paymentduration,
                                                     companyid: value.companyid,
+                                                    creditBalance: creditbalance,
                                                     staff: value.staff,
                                                     date: DateTime.now(),
                                                     updatedby: value.staff,
@@ -962,9 +972,11 @@ class _CustomerRegistrationState extends State<CustomerRegistration> {
 
                                                 );
 
-                                                await existingDoc.doc(id).set(newCustomer.toMap());
+                                                await existingDoc.doc(id).set(newCustomer.toMap(),
+                                                  SetOptions(merge: true),);
                                                 _nameController.clear();
                                                 _contactController.clear();
+                                                _creditbalanceController.clear();
                                                 setState(() => _selectedCustomerType = null);
                                               }
 

@@ -24,48 +24,90 @@ class _ReceivepaymentsPageState extends State<ReceivepaymentsPage> {
   Debtor? _selectedDebtor;
   List<Debtor> _searchResults = [];
   bool _isSearching = false;
-
+  Timer? _searchDebounce;
+  bool _ignoreSearchListener = false;
   @override
   void initState() {
     super.initState();
+
+    _searchController.addListener(_onSearchChanged);
   }
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
+    _searchController.removeListener(_onSearchChanged);
     _searchController.dispose();
     super.dispose();
   }
 
-  Future<void> _performSearch(CashierProvider provider) async {
+  void _onSearchChanged() {
+    if (_ignoreSearchListener) return;
+
+    _searchDebounce?.cancel();
+
     final query = _searchController.text.trim();
 
-    if (query.isEmpty) {
+
+    if (_selectedDebtor != null) {
       setState(() {
         _selectedDebtor = null;
-        _searchResults = [];
-        _isSearching = false;
       });
+    }
+
+    if (query.length < 3) {
+      if (mounted) {
+        setState(() {
+          _searchResults = [];
+          _isSearching = false;
+        });
+      }
       return;
     }
 
+    _searchDebounce = Timer(
+      const Duration(milliseconds: 400),
+          () {
+        if (!mounted) return;
+
+        final provider = Provider.of<CashierProvider>(
+          context,
+          listen: false,
+        );
+
+        _performSearch(provider, query);
+      },
+    );
+  }
+
+  Future<void> _performSearch(
+      CashierProvider provider,
+      String query,
+      ) async {
+    if (query.trim().length < 3) return;
+
+    if (!mounted) return;
+
     setState(() {
       _isSearching = true;
-      _selectedDebtor = null;
       _searchResults = [];
-
     });
 
     try {
-      final results = await provider.loadcustomers(query);
+      final results = await provider.loadcustomers(query.trim(),);
 
       if (!mounted) return;
 
+      final firstFive = results.take(5).toList();
+
       setState(() {
-        _searchResults = results.take(5).toList();
+        _searchResults = firstFive;
         _isSearching = false;
       });
 
-      print('Found ${_searchResults.length} customers');
+      debugPrint(
+        'Found ${_searchResults.length} customers for "$query"',
+      );
     } catch (e) {
       if (!mounted) return;
 
@@ -74,7 +116,9 @@ class _ReceivepaymentsPageState extends State<ReceivepaymentsPage> {
         _isSearching = false;
       });
 
-      print('Customer search failed: $e');
+      debugPrint(
+        'Customer search failed: $e',
+      );
     }
   }
   @override
@@ -93,11 +137,19 @@ class _ReceivepaymentsPageState extends State<ReceivepaymentsPage> {
             actions: [
               IconButton(
                 icon: const Icon(Icons.refresh),
-                onPressed: () async {
+                onPressed: () {
+                  _searchDebounce?.cancel();
+
+                  _ignoreSearchListener = true;
+
+                  _searchController.clear();
+
+                  _ignoreSearchListener = false;
+
                   setState(() {
                     _selectedDebtor = null;
-                    _searchController.clear();
-                    _searchController.clear();
+                    _searchResults = [];
+                    _isSearching = false;
                   });
                 },
               ),
@@ -115,87 +167,69 @@ class _ReceivepaymentsPageState extends State<ReceivepaymentsPage> {
                   Center(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 400,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF1E3A5F),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: TextField(
-                              controller: _searchController,
-                              style: const TextStyle(color: Colors.white),
-                              onSubmitted: (value) => _performSearch(provider),
-                              decoration: InputDecoration(
-                                hintText: 'Search by phone number',
-                                hintStyle: TextStyle(color: Colors.grey.shade400),
-                                prefixIcon: const Icon(
-                                  Icons.search,
-                                  color: Colors.grey,
-                                ),
-                                border: InputBorder.none,
-                                contentPadding: const EdgeInsets.symmetric(
-                                  vertical: 12,
-                                ),
-                                filled: true,
-                                fillColor: const Color(0xFF22304A),
-                                suffixIcon: _searchController.text.isNotEmpty
-                                    ? IconButton(
-                                  icon: const Icon(
-                                    Icons.clear,
-                                    color: Colors.grey,
-                                  ),
-                                  onPressed: () {
-                                    setState(() {
-                                      _searchController.clear();
-                                      _searchController.clear();
-                                      _selectedDebtor = null;
-                                    });
-                                  },
-                                )
-                                    : null,
-                              ),
-                            ),
+                      child: Container(
+                        width: 400,
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1E3A5F),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: TextField(
+                          controller: _searchController,
+                          style: const TextStyle(
+                            color: Colors.white,
                           ),
-
-                          const SizedBox(width: 8),
-
-                          ElevatedButton(
-                            onPressed: _isSearching
-                                ? null
-                                : () => _performSearch(provider),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.blue.shade700,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 20,
-                                vertical: 14,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
+                          decoration: InputDecoration(
+                            hintText: 'Search customer by name',
+                            hintStyle: TextStyle(
+                              color: Colors.grey.shade400,
                             ),
-                            child: _isSearching
-                                ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  Colors.white,
+                            prefixIcon: const Icon(
+                              Icons.person_search,
+                              color: Colors.grey,
+                            ),
+                            border: InputBorder.none,
+                            contentPadding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                            ),
+                            filled: true,
+                            fillColor: const Color(0xFF22304A),
+
+                            suffixIcon: _isSearching
+                                ? const Padding(
+                              padding: EdgeInsets.all(12),
+                              child: SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor:
+                                  AlwaysStoppedAnimation<Color>(
+                                    Colors.white,
+                                  ),
                                 ),
                               ),
                             )
-                                : const Text(
-                              'Search',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
+                                : _searchController.text.isNotEmpty
+                                ? IconButton(
+                              icon: const Icon(
+                                Icons.clear,
+                                color: Colors.grey,
                               ),
-                            ),
+                              onPressed: () {
+                                _searchDebounce?.cancel();
+
+                                _searchController.clear();
+
+                                setState(() {
+                                  _selectedDebtor = null;
+                                  _searchResults = [];
+                                  _isSearching = false;
+                                });
+                              },
+                            )
+                                : null,
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
@@ -263,12 +297,21 @@ class _ReceivepaymentsPageState extends State<ReceivepaymentsPage> {
         onViewDetails: () {
           _showDebtorDetails(context, debtor);
         },
-        onBack: () {
-          setState(() {
-            _selectedDebtor = null;
+          onBack: () {
+            _searchDebounce?.cancel();
+
+            _ignoreSearchListener = true;
+
             _searchController.clear();
-          });
-        },
+
+            _ignoreSearchListener = false;
+
+            setState(() {
+              _selectedDebtor = null;
+              _searchResults = [];
+              _isSearching = false;
+            });
+          },
       ),
     );
   }
@@ -349,105 +392,98 @@ class _ReceivepaymentsPageState extends State<ReceivepaymentsPage> {
       itemBuilder: (context, index) {
         final debtor = _searchResults[index];
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 10),
-          elevation: 3,
-          color: const Color(0xFF1E3A5F),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(12),
-            onTap: () {
-              setState(() {
-                _selectedDebtor = debtor;
-                _searchResults = [];
-                _searchController.text = debtor.name;
-              });
-            },
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 24,
-                    backgroundColor: Colors.blue.shade700,
-                    child: Text(
-                      debtor.name.isNotEmpty
-                          ? debtor.name[0].toUpperCase()
-                          : '?',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-
-                  const SizedBox(width: 12),
-
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment:
-                      CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          debtor.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+        return Center(
+          child: SizedBox(
+            width: MediaQuery.of(context).size.width < 600
+                ? MediaQuery.of(context).size.width * 0.90
+                : MediaQuery.of(context).size.width * 0.35,
+            child: Card(
+              margin: const EdgeInsets.only(bottom: 10),
+              elevation: 3,
+              color: const Color(0xFF1E3A5F),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () {
+                  setState(() {
+                    _selectedDebtor = debtor;
+                    _searchResults = [];
+                  });
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 24,
+                        backgroundColor: Colors.blue.shade700,
+                        child: Text(
+                          debtor.name.isNotEmpty
+                              ? debtor.name[0].toUpperCase()
+                              : '?',
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
+                      ),
 
-                        const SizedBox(height: 5),
+                      const SizedBox(width: 12),
 
-                        Row(
+                      SizedBox(
+                        width: MediaQuery.of(context).size.width < 600
+                            ? 150
+                            : 250,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(
-                              Icons.phone,
-                              size: 14,
-                              color: Colors.grey.shade400,
-                            ),
-                            const SizedBox(width: 5),
                             Text(
-                              debtor.contact,
-                              style: TextStyle(
-                                color: Colors.grey.shade400,
-                                fontSize: 13,
+                              debtor.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
                               ),
+                            ),
+
+                            const SizedBox(height: 5),
+
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.phone,
+                                  size: 14,
+                                  color: Colors.grey.shade400,
+                                ),
+                                const SizedBox(width: 5),
+                                Flexible(
+                                  child: Text(
+                                    debtor.contact,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: Colors.grey.shade400,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-
-                        const SizedBox(height: 5),
-
-                        Text(
-                          debtor.branchName.isEmpty
-                              ? 'N/A'
-                              : debtor.branchName,
-                          style: TextStyle(
-                            color: Colors.grey.shade500,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-
-                  const SizedBox(width: 8),
-
-                  Icon(
-                    Icons.chevron_right,
-                    color: Colors.grey.shade400,
-                  ),
-                ],
+                ),
               ),
             ),
           ),
-        );
-      },
+        );      },
     );
   }
 }

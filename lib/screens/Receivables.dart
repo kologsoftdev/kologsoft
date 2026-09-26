@@ -1099,7 +1099,6 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                       ),
                     ),
                     const SizedBox(height: 8),
-       // "hubtel" or "merchant"
 
                     if (paymentMethod.toLowerCase() == 'momo') ...[
           const SizedBox(height: 8),
@@ -1109,6 +1108,10 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
         decoration: BoxDecoration(
         color: const Color(0xFF1E3A5F),
         borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+          color: Colors.white,
+          width: 0.5,
+        ),
         ),
         child: DropdownButtonFormField<String>(
         value: selectedNetwork,
@@ -1162,6 +1165,10 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
         decoration: BoxDecoration(
         color: const Color(0xFF1E3A5F),
         borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: Colors.white,
+            width: 0.5,
+          ),
         ),
         child: DropdownButtonFormField<String>(
         value: momoType,
@@ -1249,6 +1256,10 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                         decoration: BoxDecoration(
                           color: const Color(0xFF1E3A5F),
                           borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 0.5,
+                          ),
                         ),
                         child: TextFormField(
                           controller: referenceController,
@@ -1307,6 +1318,10 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                         decoration: BoxDecoration(
                           color: const Color(0xFF1E3A5F),
                           borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: Colors.white,
+                            width: 0.5,
+                          ),
                         ),
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,

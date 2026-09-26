@@ -592,9 +592,9 @@ class CashierProvider extends Datafeed {
 
       debtpayments.removeWhere((p) => p.id == payment.id);
 
-    } catch (e) {
-      print("Transaction failed: $e");
-      rethrow;
+    } catch(e, stackTrace) {
+    debugPrint('ERROR: $e');
+    debugPrint('$stackTrace');
     }finally{
       deletingPayments.remove(payment.id);
       notifyListeners();

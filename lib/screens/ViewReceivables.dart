@@ -324,14 +324,17 @@ actions: [
                           );
 
                           if (confirm == true) {
-                          await value.deletePayment(
-                          payment: paymentlists,
-                          debtorId: paymentlists.customerid,
-                          );
 
-                          ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text("Transaction deleted successfully")),
-                          );
+
+                            await value.deletePayment(
+                              payment: paymentlists,
+                              debtorId: paymentlists.customerid,
+                            );
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("Transaction deleted successfully")),
+                            );
+
                           }
                           },
                           child: isDeleting

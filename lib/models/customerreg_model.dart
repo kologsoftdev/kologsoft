@@ -19,7 +19,7 @@ class CustomerRegModel {
   String? deletedby;
   DateTime? deletedat;
   String staff;
-  String? creditBalance;
+  String creditBalance;
 
   CustomerRegModel({
     required this.id,
@@ -39,7 +39,7 @@ class CustomerRegModel {
     this.deletedby,
     this.deletedat,
     required this.staff,
-    this.creditBalance,
+    this.creditBalance="0",
     this.amountpaid='0',
   });
 
@@ -101,7 +101,7 @@ class CustomerRegModel {
       deletedby: parseString(json['deletedby']),
       deletedat: parseDate(json['deletedat']),
       staff: parseString(json['staff']) ?? '',
-      creditBalance: parseString(json['creditBalance']),
+      creditBalance: parseString(json['creditBalance'])?? '',
       amountpaid:  parseString(json['amountpaid']),
     );
   }
