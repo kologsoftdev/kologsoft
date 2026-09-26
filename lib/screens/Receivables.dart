@@ -59,7 +59,9 @@ class _ReceivablesListPageState extends State<ReceivablesListPage> {
                             Expanded(
                               child: _buildSummaryCard(
                                 'Total Outstanding',
-                                'GHS ${NumberFormat('#,##0.00').format(provider.totalOutstandingBalance)}',
+                                provider.totalOutstandingBalance < 0
+                                    ? 'GHS (${NumberFormat('#,##0.00').format(provider.totalOutstandingBalance.abs())})'
+                                    : 'GHS ${NumberFormat('#,##0.00').format(provider.totalOutstandingBalance)}',
                                 Icons.account_balance_wallet,
                                 Colors.white,
                               ),
@@ -978,8 +980,21 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                         child: Row( mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             const Text( 'Current Balance:', style: TextStyle( color: Colors.white, fontSize: 14, ), ),
-                            Flexible( child: Text( 'GHS ${NumberFormat('#,##0.00').format(widget.debtor.balance)}', textAlign: TextAlign.end, overflow: TextOverflow.ellipsis,
-                              style: const TextStyle( color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold, ), ), ), ], ), ),
+                            Flexible(
+                              child: Text(
+                                widget.debtor.balance < 0
+                                    ? 'GHS (${NumberFormat('#,##0.00').format(widget.debtor.balance.abs())})'
+                                    : 'GHS ${NumberFormat('#,##0.00').format(widget.debtor.balance)}',
+                                textAlign: TextAlign.end,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ], ), ),
                     const SizedBox(height: 5),
                     // Amount
                     TextFormField(
@@ -1018,7 +1033,10 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
                         color: const Color(0xFF1E3A5F),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(8),border: Border.all(
+                        color: Colors.white,
+                        width: 0.5,
+                      ),
                       ),
                       child: DropdownButtonHideUnderline(
                         child: DropdownButton<String>(
@@ -1663,7 +1681,9 @@ class DebtorDetailsDialog extends StatelessWidget {
                     ),
                     child: Column(
                       children: [
-                        _financialRow('Total Debt', 'GHS ${NumberFormat('#,##0.00').format(debtor.creditBalance)}', Colors.white),
+                        _financialRow('Total Debt',
+
+                            'GHS ${NumberFormat('#,##0.00').format(debtor.creditBalance)}', Colors.white),
                         const Divider(color: Colors.grey),
                         _financialRow('Amount Paid', 'GHS ${NumberFormat('#,##0.00').format(debtor.amountpaid)}', Colors.white),
                         const Divider(color: Colors.grey),

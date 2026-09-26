@@ -475,24 +475,13 @@ class _EditPaymentFormDialogState extends State<EditPaymentFormDialog> {
 
     double amount = double.parse(_amountController.text);
 
-    // if (amount > widget.debtor.balance) {
-    //   ScaffoldMessenger.of(context).showSnackBar(
-    //     SnackBar(
-    //       content: Text(
-    //         'Amount cannot exceed balance of GHS ${widget.debtor.balance}',
-    //       ),
-    //       backgroundColor: Colors.red,
-    //     ),
-    //   );
-    //   return;
-    // }
+
     try {
       setState(() {
         isLoading=true;
       });
       final provider = Provider.of<CashierProvider>(context, listen: false);
       final paymentId = '${widget.debtor.id}${DateTime.now().millisecondsSinceEpoch}';
-      //double newamount=widget.payment.amount-amount;
       double runningbalance=widget.debtor.balance-amount;
 
       final payment = Payment(
@@ -578,71 +567,66 @@ class _EditPaymentFormDialogState extends State<EditPaymentFormDialog> {
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
-                const SizedBox(height: 20),
                 // Header
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: Colors.blue.shade800,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(Icons.payment, color: Colors.white),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'Receive Payment',
-                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
-                            ),
-                            Text(
-                              'Debtor: ${widget.debtor.name}',
-                              style: TextStyle(color: Colors.grey.shade400, fontSize: 14),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
                 // Balance info
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 20),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.orange.shade900.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.orange.shade700),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Current Balance:',
-                        style: TextStyle(color: Colors.white, fontSize: 16),
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: 500,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.blue.shade800,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.payment,
+                              color: Colors.white,
+                            ),
+                          ),
+
+                          const SizedBox(width: 12),
+
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Receive Payment',
+                                  style: TextStyle(
+                                    fontSize: 14,
+
+                                    color: Colors.white,
+                                  ),
+                                ),
+
+                                Text(
+                                  'Customer: ${widget.debtor.name}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: Colors.grey.shade400,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                      Text(
-                        'GHS ${NumberFormat('#,##0.00').format(widget.debtor.balance)}',
-                        style: const TextStyle(
-                          color: Colors.orange,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-                const SizedBox(height: 20),
-                // Form
-                Expanded(
-                  child: SingleChildScrollView(
+          Flexible(
+          child: Center(
+          child: ConstrainedBox(constraints:
+          const BoxConstraints(maxWidth: 500, ),
+          child: SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Form(
                       key: _formKey,
@@ -650,7 +634,6 @@ class _EditPaymentFormDialogState extends State<EditPaymentFormDialog> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           // Amount
-                          const Text('Amount to Pay *', style: TextStyle(color: Colors.grey)),
                           TextFormField(
                             controller: _amountController,
                             keyboardType: TextInputType.numberWithOptions(decimal: true),
@@ -659,6 +642,8 @@ class _EditPaymentFormDialogState extends State<EditPaymentFormDialog> {
                             ],
                             style: const TextStyle(color: Colors.white),
                             decoration: const InputDecoration(
+                              labelText: 'Amount',
+                              labelStyle: TextStyle(color: Colors.white70),
                                 prefixText: 'GHS ',
                                 prefixStyle: TextStyle(color: Colors.white),
                                 hintText: '0.00',
@@ -678,9 +663,8 @@ class _EditPaymentFormDialogState extends State<EditPaymentFormDialog> {
                               return null;
                             },
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 12),
                           // Payment Method
-                          const Text('Payment Method *', style: TextStyle(color: Colors.grey)),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             decoration: BoxDecoration(
@@ -739,7 +723,7 @@ class _EditPaymentFormDialogState extends State<EditPaymentFormDialog> {
                               ),
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 12),
                           if (paymentMethod.toLowerCase() == 'momo') ...[
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -792,7 +776,7 @@ class _EditPaymentFormDialogState extends State<EditPaymentFormDialog> {
                                   return null;
                                 },
                               ),),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 12),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12),
                               decoration: BoxDecoration(
@@ -828,9 +812,10 @@ class _EditPaymentFormDialogState extends State<EditPaymentFormDialog> {
                                   }
                                   return null;
                                 },
-                              ),)
-                          ],
+                              ),),
+                            const SizedBox(height: 12),
 
+                          ],
                           if (paymentMethod.toLowerCase() == 'bank_transfer' || paymentMethod.toLowerCase() == 'cheque') ...[
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -863,13 +848,12 @@ class _EditPaymentFormDialogState extends State<EditPaymentFormDialog> {
                                 },
                               ),
                             ),
+                            const SizedBox(height: 12),
 
                           ],
-                          const SizedBox(height: 16),
                           _buildLinkedAccountDropdown(),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 12),
                           // Date
-                          const Text('Payment Date *', style: TextStyle(color: Colors.grey)),
                           InkWell(
                             onTap: () async {
                               DateTime? picked = await showDatePicker(
@@ -910,11 +894,10 @@ class _EditPaymentFormDialogState extends State<EditPaymentFormDialog> {
                               ),
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 12),
 
                           // Note/Reference
                           const Text('Narration', style: TextStyle(color: Colors.grey)),
-                          const SizedBox(height: 8),
                           TextFormField(
                             controller: _referenceController,
                             style: const TextStyle(color: Colors.white),
@@ -924,9 +907,9 @@ class _EditPaymentFormDialogState extends State<EditPaymentFormDialog> {
                               filled: true,
                               fillColor: const Color(0xFF1E3A5F),
                             ),
-                            maxLines: 3,
+                            maxLines: 2,
                           ),
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 20),
 
                           // Submit Button
                           Center(
@@ -965,8 +948,8 @@ class _EditPaymentFormDialogState extends State<EditPaymentFormDialog> {
                       ),
                     ),
                   ),
-                ),
-              ],
+                ),),
+          )],
             ),
           );
         });

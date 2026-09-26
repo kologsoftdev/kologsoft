@@ -680,7 +680,7 @@ class _HomeDashboardState extends State<HomeDashboard> {
                       items: [
                         _statCard(
                           title: "SMS balance",
-                          value: value.smsBalance.toStringAsFixed(2),
+                          value: value.smsBalance.toString(),
                           subtitle: "Available",
                           icon: Icons.sms,
                           iconColor: Colors.blue,
@@ -694,7 +694,7 @@ class _HomeDashboardState extends State<HomeDashboard> {
                         ),
                         _statCard(
                           title: "Re-order",
-                          value: "0",
+                          value: value.companystockreorderbal.toString(),
                           subtitle: "Requires attention",
                           icon: Icons.warning_amber_rounded,
                           iconColor: Colors.orange,
@@ -708,14 +708,14 @@ class _HomeDashboardState extends State<HomeDashboard> {
                         ),
                         _statCard(
                           title: "Finished Stock",
-                          value: "0",
+                          value: value.companyfinishedstock.toString(),
                           subtitle: "Within 30 days",
                           icon: Icons.security_update_good_sharp,
                           iconColor: Colors.lightBlue,
                         ),
                         _statCard(
                           title: "Available",
-                          value: "0",
+                          value: value.companyavailablestock.toString(),
                           subtitle: "Within 30 days",
                           icon: Icons.new_label_sharp,
                           iconColor: Colors.lightGreen,

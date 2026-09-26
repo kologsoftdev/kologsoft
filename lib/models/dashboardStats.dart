@@ -38,6 +38,9 @@ class DashboardStats {
   final double branchDiscount;
   final double companydebtpay_momo;
   final double branchdebtpay_momo;
+  final int companystockreorderbal;
+  final int companyfinishedstock;
+  final int companyavailablestock;
 
   DashboardStats({
     required this.companySalesValue,
@@ -65,5 +68,8 @@ class DashboardStats {
     required this. branchDiscount,
     required this. companydebtpay_momo,
     required this. branchdebtpay_momo,
+    required this. companystockreorderbal,
+    required this. companyfinishedstock,
+    required this. companyavailablestock,
   });
 }

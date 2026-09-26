@@ -6,6 +6,7 @@ class CustomerRegModel {
   String branchid;
   String? amountpaid;
   String name;
+  String? namelower;
   String contact;
   String customertype;
   String? creditlimit;
@@ -25,6 +26,7 @@ class CustomerRegModel {
     required this.branchname,
     required this.branchid,
     required this.name,
+     this.namelower,
     required this.contact,
     required this.customertype,
     this.creditlimit,
@@ -48,6 +50,7 @@ class CustomerRegModel {
       'branchid': branchid,
       'id': id,
       'name': name,
+      'namelower': name.toLowerCase(),
       'contact': contact,
       'customertype': customertype,
       'creditlimit': creditlimit,
@@ -85,6 +88,7 @@ class CustomerRegModel {
       branchname: parseString(json['branchname']) ?? '',
       branchid: parseString(json['branchid']) ?? '',
       name: parseString(json['name']) ?? '',
+      namelower: parseString(json['namelower']) ?? '',
       contact: parseString(json['contact']) ?? '',
       customertype: parseString(json['customertype']) ?? '',
       creditlimit: parseString(json['creditlimit']),

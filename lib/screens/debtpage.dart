@@ -177,7 +177,7 @@ class _TotalDebtWidgetState extends State<TotalDebtWidget>
         final branchtotaldebt=dashboard.branchCredit+dashboard.branchopening_credit_bal;
         final companyCredit =isSuperAdmin? comptotaldebt:branchtotaldebt;
         final companyStockValue = isSuperAdmin?dashboard.companyStockValue:dashboard.branchStockValue;
-//print("opbal:${dashboard.companyopening_credit_bal}");
+
         if (companyCredit != _currentDebt) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (mounted && companyCredit != _currentDebt) {
@@ -264,13 +264,20 @@ class _TotalDebtWidgetState extends State<TotalDebtWidget>
           ),
 
           const SizedBox(height: 12),
-
           AnimatedBuilder(
             animation: _animation,
             builder: (context, child) {
+              final value = _animation.value;
+              final isNegative = value < 0;
+              final displayValue = NumberFormat('#,##0.00').format(
+                isNegative ? value.abs() : value,
+              );
+
               return FittedBox(
                 child: Text(
-                  "GHS ${NumberFormat('#,##0.00').format(_animation.value)}",
+                  isNegative
+                      ? "GHS ($displayValue)"
+                      : "GHS $displayValue",
                   style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
@@ -280,6 +287,21 @@ class _TotalDebtWidgetState extends State<TotalDebtWidget>
               );
             },
           ),
+          // AnimatedBuilder(
+          //   animation: _animation,
+          //   builder: (context, child) {
+          //     return FittedBox(
+          //       child: Text(
+          //         "GHS ${NumberFormat('#,##0.00').format(_animation.value)}",
+          //         style: TextStyle(
+          //           fontSize: 22,
+          //           fontWeight: FontWeight.bold,
+          //           color: color,
+          //         ),
+          //       ),
+          //     );
+          //   },
+          // ),
 
           const SizedBox(height: 6),
 

@@ -122,7 +122,7 @@ Stream<DashboardDocument> dashboardStream() {
           companySalesValue: 0,
           companyExpenseValue: 0,
           branchSalesValue: 0,
-          branchExpenseValue: 0, companyCash: 0, companyCard: 0, companyCredit: 0, companyMomo: 0, companyBankTransfer: 0, branchCash: 0, branchCard: 0, branchCredit: 0, branchMomo: 0, branchBankTransfer: 0, companyStockValue: 0, branchStockValue: 0, companyopening_credit_bal: 0, branchopening_credit_bal: 0, smsBalance: 0, companyDiscount: 0, branchDiscount: 0, companydebtpay_momo: 0, branchdebtpay_momo: 0,
+          branchExpenseValue: 0, companyCash: 0, companyCard: 0, companyCredit: 0, companyMomo: 0, companyBankTransfer: 0, branchCash: 0, branchCard: 0, branchCredit: 0, branchMomo: 0, branchBankTransfer: 0, companyStockValue: 0, branchStockValue: 0, companyopening_credit_bal: 0, branchopening_credit_bal: 0, smsBalance: 0, companyDiscount: 0, branchDiscount: 0, companydebtpay_momo: 0, branchdebtpay_momo: 0, companystockreorderbal: 0, companyfinishedstock: 0, companyavailablestock: 0,
         ),
         stock: BranchStock(
           companyId: '',

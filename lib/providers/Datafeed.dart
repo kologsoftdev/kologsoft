@@ -74,6 +74,9 @@ class Datafeed extends ChangeNotifier {
   SalesImportService? _salesImport;
   double smsBalance=0.0;
   double disCount=0.0;
+  int companystockreorderbal=0;
+  int companyfinishedstock=0;
+  int companyavailablestock=0;
   SalesImportService get salesImport => _salesImport ??= SalesImportService();
 
   // Stream for top 10 items by sales amount, updates incrementally as sales change
@@ -342,6 +345,9 @@ class Datafeed extends ChangeNotifier {
           branchBankTransfer: 0,
           branchopening_credit_bal:0,
           smsBalance:0,
+            companystockreorderbal:0,
+            companyfinishedstock:0,
+            companyavailablestock:0,
           branchDiscount:0,
            branchdebtpay_momo: 0
 
@@ -380,6 +386,9 @@ class Datafeed extends ChangeNotifier {
           companyopening_credit_bal: 0,
           branchopening_credit_bal: 0,
           smsBalance: 0,
+          companystockreorderbal: 0,
+          companyfinishedstock: 0,
+          companyavailablestock: 0,
         );
       }
 
@@ -413,6 +422,9 @@ class Datafeed extends ChangeNotifier {
       double branchopening_credit_bal = 0.0;
        smsBalance = (data['smsBalance'] as num?)?.toDouble() ?? 0.0;
        disCount = (data['company_Discount'] as num?)?.toDouble() ?? 0.0;
+       companystockreorderbal = (data['companyreorderCount'] as num?)?.toInt() ?? 0;
+       companyfinishedstock = (data['companyfinishedCount'] as num?)?.toInt() ?? 0;
+       companyavailablestock = (data['companyavailableCount'] as num?)?.toInt() ?? 0;
      double branchDiscount = 0.0;
      double branchdebtpay_momo = 0.0;
      double branchdebtpay_cash = 0.0;
@@ -552,6 +564,9 @@ class Datafeed extends ChangeNotifier {
         branchDiscount: branchDiscount,
         companydebtpay_momo:companydebtpay_momo,
         branchdebtpay_momo:branchdebtpay_momo,
+        companystockreorderbal: companystockreorderbal,
+        companyfinishedstock: companyfinishedstock,
+        companyavailablestock: companyavailablestock,
       );
 
     });
@@ -4479,6 +4494,7 @@ print("Fetched ${branches.length} branches for company $companyid");
         'logoutTime': null,
         'status': 'logged_in',
       });
+      updateStockreorderBalance(companyreorderCount: 10, companyfinishedCount: 5, companyavailableCount: 5);
       await getdata();
 
       // Sync items cache after successful login
@@ -9177,10 +9193,14 @@ print("Fetched ${branches.length} branches for company $companyid");
     });
   }
 
-updateStockreorderBalance({required int companyCount, required String branchid,branchCount}) async {
+    updateStockreorderBalance({required int companyreorderCount,required companyfinishedCount,required companyavailableCount,branchid,branchreorderCount,branchfinishedCount,branchavailableCount}) async {
    await db .collection("dashbaord_stats").doc(companyid).update({
-    "companyreorderCount":  companyCount,
-     "branchreorderCount.$branchid": branchCount,
+    "companyreorderCount":  companyreorderCount,
+    "companyfinishedCount":  companyfinishedCount,
+    "companyavailableCount":  companyavailableCount,
+     "branchreorderCount.$branchid": branchreorderCount,
+     "branchfinishedCount.$branchid": branchfinishedCount,
+     "branchavailableCount.$branchid": branchavailableCount,
 
   });
 

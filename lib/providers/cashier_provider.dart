@@ -327,20 +327,46 @@ class CashierProvider extends Datafeed {
       notifyListeners();
     }
   }
-  loadcustomers(String contact) async {
-   try {
-      await getdata();
-      Query query = db
-          .collection('customers').where('companyid', isEqualTo: companyid).where('contact', isEqualTo: contact).limit(1);
-      final snapshot = await query.get();
-     return debtorlist = snapshot.docs.map((doc) => Debtor.fromFirestore(doc)).toList();
 
+  Future<List<Debtor>> loadcustomers(String name) async {
+    try {
+      await getdata();
+
+      final searchName = name.trim();
+
+      if (searchName.isEmpty) {
+        debtorlist = [];
+        return [];
+      }
+
+      final snapshot = await db.collection('customers').where('companyid', isEqualTo: companyid)
+          .where('namelower', isGreaterThanOrEqualTo: searchName).where('namelower', isLessThanOrEqualTo: '$searchName\uf8ff')
+          .limit(5)
+          .get();
+
+      debtorlist = snapshot.docs.map((doc) => Debtor.fromFirestore(doc)) .toList();
+      return debtorlist;
     } catch (e) {
-      print('Failed to load debtors: $e');
-    }finally{
+      print('Failed to load customers: $e');
+      return [];
+    } finally {
       notifyListeners();
     }
   }
+  // loadcustomers(String contact) async {
+  //  try {
+  //     await getdata();
+  //     Query query = db
+  //         .collection('customers').where('companyid', isEqualTo: companyid).where('contact', isEqualTo: contact).limit(5);
+  //     final snapshot = await query.get();
+  //    return debtorlist = snapshot.docs.map((doc) => Debtor.fromFirestore(doc)).toList();
+  //
+  //   } catch (e) {
+  //     print('Failed to load debtors: $e');
+  //   }finally{
+  //     notifyListeners();
+  //   }
+  // }
 
  incrementMomoDebtPayment({
     required amount,required paymentmethod
