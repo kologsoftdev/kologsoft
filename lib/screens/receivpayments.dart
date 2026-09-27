@@ -237,13 +237,11 @@ class _ReceivepaymentsPageState extends State<ReceivepaymentsPage> {
 
 
                   // Single Record Display
-                  Expanded(
-                    child: _selectedDebtor != null
-                        ? _buildSingleDebtorCard(provider)
-                        : _searchResults.isNotEmpty
-                        ? _buildSearchResults(provider)
-                        : _buildEmptyState(provider),
-                  ),
+                  _selectedDebtor != null
+                      ? _buildSingleDebtorCard(provider)
+                      : _searchResults.isNotEmpty
+                      ? _buildSearchResults(provider)
+                      : _buildEmptyState(provider),
                 ],
               ),
             ),
@@ -388,16 +386,21 @@ class _ReceivepaymentsPageState extends State<ReceivepaymentsPage> {
     );
   }
   Widget _buildSearchResults(CashierProvider provider) {
+    final results = _searchResults.take(5).toList();
+
+    if (results.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final screenWidth = MediaQuery.of(context).size.width;
+
+    final width = screenWidth < 600
+        ? screenWidth * 0.95
+        : screenWidth * 0.28;
 
     return SizedBox(
-      width: MediaQuery.of(context).size.width < 600
-          ? MediaQuery.of(context).size.width * 0.95
-          : MediaQuery.of(context).size.width * 0.28,
+      width: width,
       child: Container(
-        margin: const EdgeInsets.only(
-          top: 4,
-          bottom: 10,
-        ),
         decoration: BoxDecoration(
           color: const Color(0xFF22304A),
           borderRadius: BorderRadius.circular(8),
@@ -412,89 +415,78 @@ class _ReceivepaymentsPageState extends State<ReceivepaymentsPage> {
             ),
           ],
         ),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxHeight: 150,
-          ),
-          child: ListView.builder(
-            shrinkWrap: true,
-            padding: EdgeInsets.zero,
-            itemCount: _searchResults.length,
-            itemBuilder: (context, index) {
-              final debtor = _searchResults[index];
+        child: ListView.builder(
+          shrinkWrap: true,
+          padding: EdgeInsets.zero,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: results.length,
+          itemExtent: 48.0,
+          itemBuilder: (context, index) {
+            final debtor = results[index];
 
-              return SizedBox(
-                height: 48, // controls height of each record
-                child: ListTile(
-                  dense: true,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 10,
+            return ListTile(
+              dense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 10,
+              ),
+              leading: CircleAvatar(
+                radius: 17,
+                backgroundColor: Colors.blue.shade700,
+                child: Text(
+                  debtor.name.isNotEmpty
+                      ? debtor.name[0].toUpperCase()
+                      : '?',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
                   ),
-
-                  leading: CircleAvatar(
-                    radius: 17,
-                    backgroundColor: Colors.blue.shade700,
-                    child: Text(
-                      debtor.name.isNotEmpty
-                          ? debtor.name[0].toUpperCase()
-                          : '?',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ),
-
-                  title: Text(
-                    debtor.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-
-                  subtitle: Row(
-                    children: [
-                      const Icon(
-                        Icons.phone,
-                        size: 12,
-                        color: Colors.white54,
-                      ),
-                      const SizedBox(width: 5),
-                      Flexible(
-                        child: Text(
-                          debtor.contact,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white70,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  trailing: const Icon(
-                    Icons.arrow_forward_ios,
-                    color: Colors.white54,
-                    size: 13,
-                  ),
-
-                  onTap: () {
-                    setState(() {
-                      _selectedDebtor = debtor;
-                      _searchResults = [];
-                    });
-                  },
                 ),
-              );
-            },
-          ),
+              ),
+              title: Text(
+                debtor.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              subtitle: Row(
+                children: [
+                  const Icon(
+                    Icons.phone,
+                    size: 12,
+                    color: Colors.white54,
+                  ),
+                  const SizedBox(width: 5),
+                  Flexible(
+                    child: Text(
+                      debtor.contact,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 11,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              trailing: const Icon(
+                Icons.arrow_forward_ios,
+                color: Colors.white54,
+                size: 13,
+              ),
+              onTap: () {
+                setState(() {
+                  _selectedDebtor = debtor;
+                  _searchResults = [];
+                });
+              },
+            );
+          },
         ),
       ),
     );
