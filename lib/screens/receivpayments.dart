@@ -80,10 +80,7 @@ class _ReceivepaymentsPageState extends State<ReceivepaymentsPage> {
     );
   }
 
-  Future<void> _performSearch(
-      CashierProvider provider,
-      String query,
-      ) async {
+  Future<void> _performSearch(CashierProvider provider, String query,) async {
     if (query.trim().length < 3) return;
 
     if (!mounted) return;
@@ -121,6 +118,9 @@ class _ReceivepaymentsPageState extends State<ReceivepaymentsPage> {
       );
     }
   }
+
+
+
   @override
   Widget build(BuildContext context) {
     return Consumer<CashierProvider>(
@@ -192,7 +192,7 @@ class _ReceivepaymentsPageState extends State<ReceivepaymentsPage> {
                               vertical: 12,
                             ),
                             filled: true,
-                            fillColor: const Color(0xFF22304A),
+                            fillColor: const Color(0xFF1E3A5F),
 
                             suffixIcon: _isSearching
                                 ? const Padding(
@@ -316,7 +316,7 @@ class _ReceivepaymentsPageState extends State<ReceivepaymentsPage> {
     );
   }
 
-  void _showPaymentDialog(BuildContext context, Debtor debtor, CashierProvider provider) {
+ _showPaymentDialog(BuildContext context, Debtor debtor, CashierProvider provider) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -326,7 +326,7 @@ class _ReceivepaymentsPageState extends State<ReceivepaymentsPage> {
         onPaymentSubmitted: (payment) {
           provider.addPaymentToDebtor(debtor.id, payment);
           // Refresh the selected debtor after payment
-          provider.loadDebtors().then((_) {
+          provider.loadcustomers(_selectedDebtor!.name).then((_) {
             Debtor? updatedDebtor;
             try {
               updatedDebtor = provider.filteredDebtors.firstWhere(
@@ -365,8 +365,10 @@ class _ReceivepaymentsPageState extends State<ReceivepaymentsPage> {
         onPaymentAdded: (payment) {
           provider.addPaymentToDebtor(debtor.id, payment);
           Navigator.pop(context);
+
           // Refresh the selected debtor after payment
-          provider.loadDebtors().then((_) {
+
+          provider.loadcustomers(_selectedDebtor!.name).then((_) {
             Debtor? updatedDebtor;
             try {
               updatedDebtor = provider.filteredDebtors.firstWhere(
@@ -386,104 +388,115 @@ class _ReceivepaymentsPageState extends State<ReceivepaymentsPage> {
     );
   }
   Widget _buildSearchResults(CashierProvider provider) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(12),
-      itemCount: _searchResults.length,
-      itemBuilder: (context, index) {
-        final debtor = _searchResults[index];
 
-        return Center(
-          child: SizedBox(
-            width: MediaQuery.of(context).size.width < 600
-                ? MediaQuery.of(context).size.width * 0.90
-                : MediaQuery.of(context).size.width * 0.35,
-            child: Card(
-              margin: const EdgeInsets.only(bottom: 10),
-              elevation: 3,
-              color: const Color(0xFF1E3A5F),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(12),
-                onTap: () {
-                  setState(() {
-                    _selectedDebtor = debtor;
-                    _searchResults = [];
-                  });
-                },
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 24,
-                        backgroundColor: Colors.blue.shade700,
-                        child: Text(
-                          debtor.name.isNotEmpty
-                              ? debtor.name[0].toUpperCase()
-                              : '?',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+    return SizedBox(
+      width: MediaQuery.of(context).size.width < 600
+          ? MediaQuery.of(context).size.width * 0.95
+          : MediaQuery.of(context).size.width * 0.28,
+      child: Container(
+        margin: const EdgeInsets.only(
+          top: 4,
+          bottom: 10,
+        ),
+        decoration: BoxDecoration(
+          color: const Color(0xFF22304A),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: Colors.blue.withOpacity(0.3),
+          ),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black26,
+              blurRadius: 8,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            maxHeight: 150,
+          ),
+          child: ListView.builder(
+            shrinkWrap: true,
+            padding: EdgeInsets.zero,
+            itemCount: _searchResults.length,
+            itemBuilder: (context, index) {
+              final debtor = _searchResults[index];
+
+              return SizedBox(
+                height: 48, // controls height of each record
+                child: ListTile(
+                  dense: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                  ),
+
+                  leading: CircleAvatar(
+                    radius: 17,
+                    backgroundColor: Colors.blue.shade700,
+                    child: Text(
+                      debtor.name.isNotEmpty
+                          ? debtor.name[0].toUpperCase()
+                          : '?',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
                       ),
+                    ),
+                  ),
 
-                      const SizedBox(width: 12),
+                  title: Text(
+                    debtor.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
 
-                      SizedBox(
-                        width: MediaQuery.of(context).size.width < 600
-                            ? 150
-                            : 250,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              debtor.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-
-                            const SizedBox(height: 5),
-
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.phone,
-                                  size: 14,
-                                  color: Colors.grey.shade400,
-                                ),
-                                const SizedBox(width: 5),
-                                Flexible(
-                                  child: Text(
-                                    debtor.contact,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: Colors.grey.shade400,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                  subtitle: Row(
+                    children: [
+                      const Icon(
+                        Icons.phone,
+                        size: 12,
+                        color: Colors.white54,
+                      ),
+                      const SizedBox(width: 5),
+                      Flexible(
+                        child: Text(
+                          debtor.contact,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 11,
+                          ),
                         ),
                       ),
                     ],
                   ),
+
+                  trailing: const Icon(
+                    Icons.arrow_forward_ios,
+                    color: Colors.white54,
+                    size: 13,
+                  ),
+
+                  onTap: () {
+                    setState(() {
+                      _selectedDebtor = debtor;
+                      _searchResults = [];
+                    });
+                  },
                 ),
-              ),
-            ),
+              );
+            },
           ),
-        );      },
+        ),
+      ),
     );
   }
 }
@@ -1214,7 +1227,6 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
       filled: true,
     );
   }
-
   Future<void> _submitPayment() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -1373,6 +1385,7 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
       );
     }
   }
+
   @override
   Widget build(BuildContext context) {
 

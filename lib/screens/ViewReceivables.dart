@@ -519,6 +519,7 @@ class _EditPaymentFormDialogState extends State<EditPaymentFormDialog> {
         'createdby': widget.debtor.staff,
         'oldamount': widget.payment.amount,
       };
+
      await provider.debptpayment(paymentData);
       setState(() {
         isLoading=false;

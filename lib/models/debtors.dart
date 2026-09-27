@@ -240,7 +240,7 @@ class Debtor {
       customerType:customerType,
       staff: staff,
       creditLimit: creditLimit ?? this.creditLimit,
-      amountpaid: amountpaid!,
+      amountpaid: amountpaid?? this.amountpaid,
       staffemail: staffemail,
     );
   }
