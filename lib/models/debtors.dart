@@ -150,7 +150,7 @@ class Debtor {
   }
 
   double get paymentProgress {
-    if (creditBalance == 0) return 0;
+    if (creditBalance == 0) return 1;
     return (amountpaid! / creditBalance).clamp(0.0, 1.0);
   }
 

@@ -651,7 +651,7 @@ class DebtorDetailCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildInfoRow('Debtor ID', debtor.id),
+                  _buildInfoRow('Customer ID', debtor.id),
                   const SizedBox(height: 8),
                   _buildInfoRow('Customer Since', DateFormat('MMM dd, yyyy').format(debtor.createdAt!)),
                   const SizedBox(height: 8),
@@ -1537,7 +1537,10 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                                   decoration: BoxDecoration(
                                     color: const Color(0xFF1E3A5F),
                                     borderRadius: BorderRadius.circular(12),
-
+                                    border: Border.all(
+                                      color: Colors.white,
+                                      width: 0.5,
+                                    ),
                                   ),
                                   child: DropdownButtonHideUnderline(
                                     child: DropdownButton<String>(
@@ -1609,6 +1612,10 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                                     decoration: BoxDecoration(
                                       color: const Color(0xFF1E3A5F),
                                       borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 0.5,
+                                      ),
                                     ),
                                     child: DropdownButtonFormField<String>(
                                       value: selectedNetwork,
@@ -1662,6 +1669,10 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                                     decoration: BoxDecoration(
                                       color: const Color(0xFF1E3A5F),
                                       borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 0.5,
+                                      ),
                                     ),
                                     child: DropdownButtonFormField<String>(
                                       value: momoType,
@@ -1749,6 +1760,10 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                                     decoration: BoxDecoration(
                                       color: const Color(0xFF1E3A5F),
                                       borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 0.5,
+                                      ),
                                     ),
                                     child: TextFormField(
                                       controller: referenceController,
@@ -1807,6 +1822,10 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                                     decoration: BoxDecoration(
                                       color: const Color(0xFF1E3A5F),
                                       borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: Colors.white,
+                                        width: 0.5,
+                                      ),
                                     ),
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1823,8 +1842,6 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                                 const SizedBox(height: 12),
 
                                 // Note/Reference
-                                // const Text('Narration', style: TextStyle(color: Colors.grey,fontSize: 12)),
-
                                 TextFormField(
                                   controller: _referenceController,
                                   style: const TextStyle(color: Colors.white),
