@@ -52,8 +52,7 @@ class ReceiptPrinter {
     final barcodeHeight = isThermal ? 36.0 : 44.0;
     final now = DateTime.now();
     final isChristmas = now.month == 12;
-    final cashierName = data.branch;
-    //final cashierName = data.cashier.trim().split(' ').first;
+    final cashierName = data.cashier.trim().split(' ').first;
     final receiptTitle = data.receiptName.trim().isEmpty
         ? 'SALES RECEIPT'
         : data.receiptName.toUpperCase();
