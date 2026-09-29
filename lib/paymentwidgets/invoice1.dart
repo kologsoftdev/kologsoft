@@ -59,6 +59,11 @@ class ReceiptPrinter {
     final companyName = data.companyName.trim().toUpperCase();
     final branchName = (data.branch ?? '').trim();
     final address = (data.address ?? '').trim();
+
+    final isSalesPoint = branchName.toLowerCase() == 'sales point';
+
+
+
     final customerName = data.customername.trim().isEmpty
         ? 'Cash Customer'
         : data.customername.trim();
@@ -151,7 +156,9 @@ class ReceiptPrinter {
             ],
           ),
           pw.TableHelper.fromTextArray(
-            headers: ['Item', 'Qty', 'Price', 'Total'],
+            headers: ['Item',
+              if (isSalesPoint) 'Warehouse'
+              'Qty', 'Price', 'Total'],
             data: data.items.map((i) {
               final qtyText = i.qty == i.qty.roundToDouble()
                   ? i.qty.toStringAsFixed(0)
@@ -159,11 +166,10 @@ class ReceiptPrinter {
               final itemText = (i.isService || i.mode.trim().isEmpty)
                   ? i.name
                   : '${i.name} (${i.mode})';
-              // final itemText = i.mode.trim().isEmpty
-              //     ? i.name
-              //     : '${i.name} (${i.mode})';
+
               return [
                 itemText,
+                if (isSalesPoint) (i.branch ?? '').trim(),
                 qtyText,
                 i.price.toStringAsFixed(2),
                 (i.qty * i.price).toStringAsFixed(2),
@@ -172,7 +178,15 @@ class ReceiptPrinter {
             headerStyle: pw.TextStyle(font: ttfBold, fontSize: 9),
             cellStyle: pw.TextStyle(font: ttfRegular, fontSize: 9),
             headerDecoration: const pw.BoxDecoration(color: PdfColors.grey200),
-            columnWidths: {
+            columnWidths: isSalesPoint
+                ? {
+              0: const pw.FlexColumnWidth(3.2),
+              1: const pw.FlexColumnWidth(2),
+              2: const pw.FlexColumnWidth(1),
+              3: const pw.FlexColumnWidth(1.3),
+              4: const pw.FlexColumnWidth(1.4),
+            }
+                : {
               0: const pw.FlexColumnWidth(4),
               1: const pw.FlexColumnWidth(1),
               2: const pw.FlexColumnWidth(1.3),

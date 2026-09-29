@@ -12,6 +12,7 @@ import '../paymentwidgets/changepasswordDialog.dart';
 import '../paymentwidgets/showlogout.dart';
 import '../providers/cashier_provider.dart';
 import '../providers/routes.dart';
+import '../widgets/momopaymentwidget.dart';
 
 
 class CashierPage extends StatefulWidget {
@@ -22,7 +23,7 @@ class CashierPage extends StatefulWidget {
 }
 
 class _CashierPageState extends State<CashierPage> with SingleTickerProviderStateMixin {
-
+  String? momoType;
   String _searchQuery = '';
   String _selectedFilter = 'Pending';
   final List<String> _filters = ['All', 'Pending', 'Paid','Credit'];
@@ -50,17 +51,119 @@ class _CashierPageState extends State<CashierPage> with SingleTickerProviderStat
       _paymentMethods=provider.allowedPaymentMethods;
     });
   }
+  // MOMO Transaction Variables
+  List<TextEditingController> momoTransactionControllers = [TextEditingController()];
+  List<TextEditingController> momoTransactionAmountControllers = [TextEditingController()];
+  TextEditingController? _contactController = TextEditingController();
 
+  List<bool> momoTransactionAmountLoaded = [false];
+  List<Timer?> momoTransactionTimers = [null];
   TextEditingController? accountNumberController = TextEditingController();
   TextEditingController referenceController = TextEditingController();
   TextEditingController amountPaidController = TextEditingController();
+  final _amountController = TextEditingController();
+
   @override
   void dispose() {
     _tabController.dispose();
     accountNumberController?.dispose();
     referenceController.dispose();
     amountPaidController.dispose();
+    _amountController.dispose();
     super.dispose();
+  }
+  void updateMomoPaidTotal() {
+    final total = momoTransactionAmountControllers
+        .map((controller) => double.tryParse(controller.text.trim()) ?? 0)
+        .fold(0.0, (sum, value) => sum + value);
+    setState(() {
+      _amountController.text = total.toStringAsFixed(2);
+      amountPaidController.text = total.toStringAsFixed(2);
+    });
+  }
+
+  Future<void> fetchMomoAmountForTransaction(int index) async {
+    final provider = Provider.of<CashierProvider>(context, listen: false);
+    final transactionId = momoTransactionControllers[index].text.trim();
+
+    if (transactionId.isEmpty) {
+      return;
+    }
+
+    try {
+      final query = await FirebaseFirestore.instance
+          .collection('momo')
+          .where('transactionId', isEqualTo: transactionId)
+          .where('companyid', isEqualTo: provider.companyid)
+          .limit(1)
+          .get();
+
+      if (query.docs.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('MOMO transaction $transactionId not found'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() {
+          momoTransactionAmountControllers[index].text = '';
+          momoTransactionAmountLoaded[index] = false;
+          updateMomoPaidTotal();
+        });
+        return;
+      }
+
+      final doc = query.docs.first;
+      final momoData = doc.data();
+      final statusValue = momoData['status']?.toString().toLowerCase() ?? '';
+
+      if (statusValue == 'saved') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Transaction ID $transactionId has already been used'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() {
+          momoTransactionAmountControllers[index].text = '';
+          momoTransactionAmountLoaded[index] = false;
+          updateMomoPaidTotal();
+        });
+        return;
+      }
+
+      final amountText = momoData['amount']?.toString() ?? '';
+      final amount = double.tryParse(amountText);
+
+      if (amount == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Unable to parse amount for transaction $transactionId'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        setState(() {
+          momoTransactionAmountControllers[index].text = '';
+          momoTransactionAmountLoaded[index] = false;
+          updateMomoPaidTotal();
+        });
+        return;
+      }
+
+      setState(() {
+        momoTransactionAmountControllers[index].text = amount.toStringAsFixed(2);
+        momoTransactionAmountLoaded[index] = true;
+        updateMomoPaidTotal();
+      });
+    } catch (e) {
+      print('Error fetching MOMO transaction: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error fetching transaction: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Future<void> _showDateRangePicker() async {
@@ -1485,85 +1588,108 @@ class _CashierPageState extends State<CashierPage> with SingleTickerProviderStat
               ),
 
           const SizedBox(height: 16),
+          if (paymentMethod.toLowerCase() == 'momo')
+          MomoPaymentFields(
+            selectedNetwork: selectedNetwork,
+            momoType: momoType,
+            networks: momoNetworks,
 
-          if (paymentMethod.toLowerCase() == 'momo') ...[
-            DropdownButtonFormField<String>(
-              value: selectedNetwork,
-              dropdownColor: const Color(0xFF1E3A5A),
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                labelText: 'Select Network',
-                labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
-                prefixIcon: const Icon(Icons.sim_card, color: Colors.white70),
-                filled: true,
-                fillColor: const Color(0xFF1E3A5A),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-              items: momoNetworks.map((network) {
-                return DropdownMenuItem(
-                  value: network.toLowerCase(),
-                  child: Row(
-                    children: [
-                      Icon(
-                        _getNetworkIcon(network),
-                        color: _getNetworkColor(network),
-                        size: 20,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(network, style: const TextStyle(color: Colors.white)),
-                    ],
-                  ),
-                );
-              }).toList(),
-              onChanged: (value) {
-                if (value != null) {
-                  setState(() {
-                    provider.selectedNetworks[invoiceId] = value;
-                  });
-                }
-              },
-              validator: (value) {
-                if (paymentMethod.toLowerCase() == 'momo' && value == null) {
-                  return 'Please select a network';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: accountNumberController,
-              style: const TextStyle(color: Colors.white),
-              keyboardType: TextInputType.phone,
-              inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-              ],
-              decoration: InputDecoration(
-                labelText: 'Mobile Money Number',
-                labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
-                hintText: 'e.g. 055XXXXXXX',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-                prefixIcon: const Icon(Icons.phone_android, color: Colors.white70),
-                filled: true,
-                fillColor: const Color(0xFF1E3A5A),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-              validator: (value) {
-                if (paymentMethod.toLowerCase() == 'momo' && (value == null || value.isEmpty)) {
-                  return 'Please enter mobile money number';
-                }
-                if (value != null && value.isNotEmpty && !RegExp(r'^0\d{9}$').hasMatch(value)) {
-                  return 'Enter a valid 10-digit number starting with 0';
-                }
-                return null;
-              },
-            ),
-          ],
+            onNetworkChanged: (value) {
+              if (value != null) {
+                setState(() {
+                  provider.selectedNetworks[invoiceId] = value;
+                });
+              }
+            },
+
+            onMomoTypeChanged: (value) {
+              setState(() {
+                momoType = value;
+              });
+            },
+
+            merchantFields: _buildMomoTransactionFields(),
+
+            phoneController: _contactController,
+          ),
+          // if (paymentMethod.toLowerCase() == 'momo') ...[
+          //   DropdownButtonFormField<String>(
+          //     value: selectedNetwork,
+          //     dropdownColor: const Color(0xFF1E3A5A),
+          //     style: const TextStyle(color: Colors.white),
+          //     decoration: InputDecoration(
+          //       labelText: 'Select Network',
+          //       labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+          //       prefixIcon: const Icon(Icons.sim_card, color: Colors.white70),
+          //       filled: true,
+          //       fillColor: const Color(0xFF1E3A5A),
+          //       border: OutlineInputBorder(
+          //         borderRadius: BorderRadius.circular(12),
+          //         borderSide: BorderSide.none,
+          //       ),
+          //     ),
+          //     items: momoNetworks.map((network) {
+          //       return DropdownMenuItem(
+          //         value: network.toLowerCase(),
+          //         child: Row(
+          //           children: [
+          //             Icon(
+          //               _getNetworkIcon(network),
+          //               color: _getNetworkColor(network),
+          //               size: 20,
+          //             ),
+          //             const SizedBox(width: 8),
+          //             Text(network, style: const TextStyle(color: Colors.white)),
+          //           ],
+          //         ),
+          //       );
+          //     }).toList(),
+          //     onChanged: (value) {
+          //       if (value != null) {
+          //         setState(() {
+          //           provider.selectedNetworks[invoiceId] = value;
+          //         });
+          //       }
+          //     },
+          //     validator: (value) {
+          //       if (paymentMethod.toLowerCase() == 'momo' && value == null) {
+          //         return 'Please select a network';
+          //       }
+          //       return null;
+          //     },
+          //   ),
+          //   const SizedBox(height: 12),
+          //   TextFormField(
+          //     controller: accountNumberController,
+          //     style: const TextStyle(color: Colors.white),
+          //     keyboardType: TextInputType.phone,
+          //     inputFormatters: [
+          //     FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+          //     ],
+          //     decoration: InputDecoration(
+          //       labelText: 'Mobile Money Number',
+          //       labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+          //       hintText: 'e.g. 055XXXXXXX',
+          //       hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+          //       prefixIcon: const Icon(Icons.phone_android, color: Colors.white70),
+          //       filled: true,
+          //       fillColor: const Color(0xFF1E3A5A),
+          //       border: OutlineInputBorder(
+          //         borderRadius: BorderRadius.circular(12),
+          //         borderSide: BorderSide.none,
+          //       ),
+          //     ),
+          //     validator: (value) {
+          //       if (paymentMethod.toLowerCase() == 'momo' && (value == null || value.isEmpty)) {
+          //         return 'Please enter mobile money number';
+          //       }
+          //       if (value != null && value.isNotEmpty && !RegExp(r'^0\d{9}$').hasMatch(value)) {
+          //         return 'Enter a valid 10-digit number starting with 0';
+          //       }
+          //       return null;
+          //     },
+          //   ),
+          // ],
 
           if (paymentMethod.toLowerCase() == 'bank_transfer' || paymentMethod.toLowerCase() == 'cheque') ...[
               TextFormField(
@@ -1932,6 +2058,138 @@ class _CashierPageState extends State<CashierPage> with SingleTickerProviderStat
       default:
         return Colors.grey;
     }
+  }
+  Widget _buildMomoTransactionFields() {
+    if (paymentMethod.toLowerCase() != 'momo') {
+      return const SizedBox();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 12),
+        const Text('MOMO Transactions', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 12),
+        Column(
+          children: [
+            for (int index = 0; index < momoTransactionControllers.length; index++)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E3A5F),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: momoTransactionAmountLoaded[index]
+                          ? Colors.green.withOpacity(0.3)
+                          : Colors.grey.withOpacity(0.2),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Transaction ${index + 1}',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: momoTransactionControllers[index],
+                              style: const TextStyle(color: Colors.white),
+                              keyboardType: TextInputType.text,
+                              decoration: InputDecoration(
+                                labelText: 'Transaction ID',
+                                labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                                hintText: 'e.g., MTN12345678',
+                                hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                                prefixIcon: const Icon(Icons.receipt_long, color: Colors.white70),
+                                filled: true,
+                                fillColor: const Color(0xFF0D1B2A),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: BorderSide.none,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.blue.shade700,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            onPressed: momoTransactionControllers[index].text.isEmpty
+                                ? null
+                                : () => fetchMomoAmountForTransaction(index),
+                            child: const Text('Submit', style: TextStyle(color: Colors.white, fontSize: 12)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: momoTransactionAmountControllers[index],
+                        readOnly: true,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          labelText: 'Amount',
+                          labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                          prefixText: 'GHS ',
+                          prefixStyle: const TextStyle(color: Colors.green),
+                          filled: true,
+                          fillColor: const Color(0xFF0D1B2A),
+                          suffixIcon: momoTransactionAmountLoaded[index]
+                              ? const Icon(Icons.check_circle, color: Colors.green)
+                              : null,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Colors.blue),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onPressed: () {
+                  setState(() {
+                    momoTransactionControllers.add(TextEditingController());
+                    momoTransactionAmountControllers.add(TextEditingController());
+                    momoTransactionAmountLoaded.add(false);
+                    momoTransactionTimers.add(null);
+                  });
+                },
+                icon: const Icon(Icons.add, color: Colors.blue),
+                label: const Text(
+                  'Add Transaction',
+                  style: TextStyle(color: Colors.blue),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 
   Widget _buildSummarySection() {

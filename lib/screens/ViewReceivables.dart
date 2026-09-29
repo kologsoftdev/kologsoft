@@ -732,6 +732,8 @@ class _EditPaymentFormDialogState extends State<EditPaymentFormDialog> {
                             ),
                           ),
                           const SizedBox(height: 12),
+
+
                           if (paymentMethod.toLowerCase() == 'momo') ...[
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -832,6 +834,7 @@ class _EditPaymentFormDialogState extends State<EditPaymentFormDialog> {
                             const SizedBox(height: 12),
 
                           ],
+
                           if (paymentMethod.toLowerCase() == 'bank_transfer' || paymentMethod.toLowerCase() == 'cheque') ...[
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12),
