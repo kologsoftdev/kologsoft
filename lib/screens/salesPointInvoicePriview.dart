@@ -48,6 +48,7 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
               qty: double.tryParse(e['quantity'].toString()) ?? 0,
               price: double.tryParse(e['price'].toString()) ?? 0,
               mode: e['mode'].toString(),
+              branch: e['branchname'].toString(),
             );
           }).toList(),
           companyName: widget.invoiceData.companyname,
@@ -61,6 +62,8 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
           discount: 0.0,
           subTotal: widget.invoiceData.totalamount,
           change: widget.invoiceData.change,
+          branch: widget.invoiceData.branchName,
+          branchType: widget.invoiceData.branchType,
           receiptName:  'OFFICIAL RECEIPT',
           email: '',
           vatPercent: 0,

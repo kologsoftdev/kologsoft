@@ -25,6 +25,7 @@ class ReceiptData {
   final String Suppliertin;
   final String? transactionId;
   final String? branch;
+  final String? branchType;
   final String? address;
   final String Customertin;
   final String customername;
@@ -73,6 +74,7 @@ class ReceiptData {
     required this.Suppliertin,
     required this.receiptName,
      this.branch,
+     this.branchType,
     this.address,
     this.transactionId,
   });
