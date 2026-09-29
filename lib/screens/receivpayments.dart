@@ -961,6 +961,17 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
     }
   }
 
+  TextEditingController _createMomoTransactionController() {
+    final controller = TextEditingController();
+
+    controller.addListener(() {
+      if (mounted) {
+        setState(() {});
+      }
+    });
+
+    return controller;
+  }
   TextEditingController? accountNumberController = TextEditingController();
   TextEditingController? _contactController = TextEditingController();
   TextEditingController? referenceController = TextEditingController();
@@ -2115,12 +2126,27 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                 ),
                 onPressed: () {
                   setState(() {
-                    momoTransactionControllers.add(TextEditingController());
-                    momoTransactionAmountControllers.add(TextEditingController());
+                    momoTransactionControllers.add(
+                      _createMomoTransactionController(),
+                    );
+
+                    momoTransactionAmountControllers.add(
+                      TextEditingController(),
+                    );
+
                     momoTransactionAmountLoaded.add(false);
                     momoTransactionTimers.add(null);
                   });
                 },
+                // onPressed: () {
+                //   setState(() {
+                //     momoTransactionControllers.add(TextEditingController());
+                //     momoTransactionAmountControllers.add(TextEditingController());
+                //     momoTransactionAmountLoaded.add(false);
+                //     momoTransactionTimers.add(null);
+                //   });
+                // },
+
                 icon: const Icon(Icons.add, color: Colors.blue),
                 label: const Text(
                   'Add Transaction',

@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:kologsoft/models/salesmodel.dart';
 import 'package:printing/printing.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
+import 'package:provider/provider.dart';
 
 import '../models/Receiptdatamodel.dart';
 import '../paymentwidgets/invoice1.dart';
+import '../providers/cashier_provider.dart';
 
 class PrintPreviewWidget extends StatefulWidget {
   final SalesModel invoiceData;
@@ -34,10 +34,12 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
     setState(() => _isGeneratingPdf = true);
 
     try {
+      final provider=Provider.of<CashierProvider>(context,listen: false);
+
       final generator = ReceiptPrinter();
      final doc= await generator.buildPdf(
         ReceiptData(
-          cashier: widget.invoiceData.printedby!,
+          cashier: provider.staff,
           barcode: widget.invoiceData.receiptNumber,
           items: widget.invoiceData.items.entries.map((entry) {
             final e=entry.value;
