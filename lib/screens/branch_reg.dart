@@ -122,48 +122,6 @@ class _BranchRegistrationState extends State<BranchRegistration> {
 
                               const SizedBox(height: 14),
 
-                              // DropdownButtonFormField<String>(
-                              //   value: _selectedBranchType,
-                              //   dropdownColor: const Color(0xFF22304A),
-                              //   style: const TextStyle(color: Colors.white),
-                              //   decoration: InputDecoration(
-                              //     labelText: 'Branch Type',
-                              //     labelStyle: const TextStyle(
-                              //       color: Colors.white70,
-                              //     ),
-                              //     border: OutlineInputBorder(
-                              //       borderRadius: BorderRadius.circular(12),
-                              //     ),
-                              //     enabledBorder: OutlineInputBorder(
-                              //       borderRadius: BorderRadius.circular(12),
-                              //       borderSide: const BorderSide(
-                              //         color: Colors.white24,
-                              //       ),
-                              //     ),
-                              //     focusedBorder: OutlineInputBorder(
-                              //       borderRadius: BorderRadius.circular(12),
-                              //       borderSide: const BorderSide(
-                              //         color: Colors.blue,
-                              //       ),
-                              //     ),
-                              //     fillColor: const Color(0xFF22304A),
-                              //     filled: true,
-                              //   ),
-                              //   items: _branchTypes.map((type) {
-                              //     return DropdownMenuItem<String>(
-                              //       value: type,
-                              //       child: Text(type),
-                              //     );
-                              //   }).toList(),
-                              //   onChanged: (value) {
-                              //     setState(() {
-                              //       _selectedBranchType = value;
-                              //     });
-                              //   },
-                              //   validator: (value) => value == null
-                              //       ? 'Please select branch type'
-                              //       : null,
-                              // ),
                               DropdownButtonFormField<String>(
                                 isExpanded: true,
                                 value: _branchTypes.contains(_selectedBranchType)

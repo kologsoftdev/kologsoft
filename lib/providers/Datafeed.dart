@@ -4217,7 +4217,7 @@ print("Fetched ${branches.length} branches for company $companyid");
     result = result
         .replaceAll('/', '')
         .replaceAll(' ', '')
-        .replaceAll(RegExp(r'[^a-zA-Z0-9_\-]'), '');
+        .replaceAll(RegExp(r'[^a-zA-Z0-9_]'), '');
 
     result = result.toLowerCase();
 
@@ -4247,14 +4247,11 @@ print("Fetched ${branches.length} branches for company $companyid");
     if (branch.id.isNotEmpty) {
       docId = branch.id;
     } else {
-      docId = "${branch.companyid}${branch.branchname}"
-          .toLowerCase()
-          .replaceAll(RegExp(r'\s+'), '_');
+      docId = normalizeAndSanitize("${branch.companyid}${branch.branchname}");
       branch.id = docId;
     }
 
-    await db.collection('branches')
-        .doc(docId).set(branch.toMap(), SetOptions(merge: true));
+    await db.collection('branches').doc(docId).set(branch.toMap(), SetOptions(merge: true));
 
     final idx = branches.indexWhere((b) => b.id == docId);
     if (idx != -1) {

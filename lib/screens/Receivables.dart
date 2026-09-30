@@ -1543,12 +1543,22 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                               controller: momoTransactionControllers[index],
                               style: const TextStyle(color: Colors.white),
                               keyboardType: TextInputType.text,
+                              onChanged: (value) {
+                                setState(() {});
+                              },
                               decoration: InputDecoration(
                                 labelText: 'Transaction ID',
-                                labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                                labelStyle: TextStyle(
+                                  color: Colors.white.withOpacity(0.7),
+                                ),
                                 hintText: 'e.g., MTN12345678',
-                                hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-                                prefixIcon: const Icon(Icons.receipt_long, color: Colors.white70),
+                                hintStyle: TextStyle(
+                                  color: Colors.white.withOpacity(0.3),
+                                ),
+                                prefixIcon: const Icon(
+                                  Icons.receipt_long,
+                                  color: Colors.white70,
+                                ),
                                 filled: true,
                                 fillColor: const Color(0xFF0D1B2A),
                                 border: OutlineInputBorder(
@@ -1558,23 +1568,36 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                               ),
                             ),
                           ),
+
                           const SizedBox(width: 8),
+
                           ElevatedButton(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.blue.shade700,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),
                             ),
-                            onPressed: momoTransactionControllers[index].text.isEmpty
+                            onPressed: momoTransactionControllers[index]
+                                .text
+                                .trim()
+                                .isEmpty
                                 ? null
                                 : () => fetchMomoAmountForTransaction(index),
-                            child: const Text('Submit', style: TextStyle(color: Colors.white, fontSize: 12)),
+                            child: const Text(
+                              'Submit',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                              ),
+                            ),
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 8),
+                      ),                      const SizedBox(height: 8),
                       TextFormField(
                         controller: momoTransactionAmountControllers[index],
                         readOnly: true,
