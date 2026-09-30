@@ -1426,7 +1426,33 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
   });
   }
 
+  bool _isDuplicateMomoTransactionId(int currentIndex) {
+    final currentId = momoTransactionControllers[currentIndex]
+        .text
+        .trim()
+        .toLowerCase();
 
+    if (currentId.isEmpty) {
+      return false;
+    }
+
+    for (int i = 0; i < momoTransactionControllers.length; i++) {
+      if (i == currentIndex) {
+        continue;
+      }
+
+      final otherId = momoTransactionControllers[i]
+          .text
+          .trim()
+          .toLowerCase();
+
+      if (otherId.isNotEmpty && otherId == currentId) {
+        return true;
+      }
+    }
+
+    return false;
+  }
   Widget _buildLinkedAccountDropdown() {
     final hasMethod = paymentMethod.isNotEmpty;
     final hasAccounts = _linkedAccounts.isNotEmpty;
@@ -1570,7 +1596,6 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                           ),
 
                           const SizedBox(width: 8),
-
                           ElevatedButton(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.blue.shade700,
@@ -1587,7 +1612,21 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                                 .trim()
                                 .isEmpty
                                 ? null
-                                : () => fetchMomoAmountForTransaction(index),
+                                : () {
+                              if (_isDuplicateMomoTransactionId(index)) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'This transaction ID has already been entered.',
+                                    ),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                                return;
+                              }
+
+                              fetchMomoAmountForTransaction(index);
+                            },
                             child: const Text(
                               'Submit',
                               style: TextStyle(
@@ -1596,6 +1635,31 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                               ),
                             ),
                           ),
+                          // ElevatedButton(
+                          //   style: ElevatedButton.styleFrom(
+                          //     backgroundColor: Colors.blue.shade700,
+                          //     padding: const EdgeInsets.symmetric(
+                          //       horizontal: 12,
+                          //       vertical: 10,
+                          //     ),
+                          //     shape: RoundedRectangleBorder(
+                          //       borderRadius: BorderRadius.circular(8),
+                          //     ),
+                          //   ),
+                          //   onPressed: momoTransactionControllers[index]
+                          //       .text
+                          //       .trim()
+                          //       .isEmpty
+                          //       ? null
+                          //       : () => fetchMomoAmountForTransaction(index),
+                          //   child: const Text(
+                          //     'Submit',
+                          //     style: TextStyle(
+                          //       color: Colors.white,
+                          //       fontSize: 12,
+                          //     ),
+                          //   ),
+                          // ),
                         ],
                       ),                      const SizedBox(height: 8),
                       TextFormField(

@@ -2000,7 +2000,33 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
         return Icons.payment;
     }
   }
+  bool _isDuplicateMomoTransactionId(int currentIndex) {
+    final currentId = momoTransactionControllers[currentIndex]
+        .text
+        .trim()
+        .toLowerCase();
 
+    if (currentId.isEmpty) {
+      return false;
+    }
+
+    for (int i = 0; i < momoTransactionControllers.length; i++) {
+      if (i == currentIndex) {
+        continue;
+      }
+
+      final otherId = momoTransactionControllers[i]
+          .text
+          .trim()
+          .toLowerCase();
+
+      if (otherId.isNotEmpty && otherId == currentId) {
+        return true;
+      }
+    }
+
+    return false;
+  }
   Widget _buildMomoTransactionFields() {
     if (paymentMethod.toLowerCase() != 'momo') {
       return const SizedBox();
@@ -2091,7 +2117,21 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                                 .trim()
                                 .isEmpty
                                 ? null
-                                : () => fetchMomoAmountForTransaction(index),
+                                : () {
+                              if (_isDuplicateMomoTransactionId(index)) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'This transaction ID has already been entered.',
+                                    ),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                                return;
+                              }
+
+                              fetchMomoAmountForTransaction(index);
+                            },
                             child: const Text(
                               'Submit',
                               style: TextStyle(
@@ -2099,8 +2139,7 @@ class _PaymentFormDialogState extends State<PaymentFormDialog> {
                                 fontSize: 12,
                               ),
                             ),
-                          ),
-                        ],
+                          ),                        ],
                       ),                      const SizedBox(height: 8),
                       TextFormField(
                         controller: momoTransactionAmountControllers[index],
