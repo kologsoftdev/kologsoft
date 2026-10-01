@@ -161,6 +161,7 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
     final createdAt = (data.createdAt as Timestamp?)?.toDate() ?? DateTime.now();
     final totalAmount = (data.totalamount as num?)?.toDouble() ?? 0;
     final change = (data.change as num?)?.toDouble() ?? 0;
+    final provider=Provider.of<CashierProvider>(context,listen: false);
 
     return Card(
       elevation: 4,
@@ -332,7 +333,7 @@ class _PrintPreviewWidgetState extends State<PrintPreviewWidget> {
 
                         _buildPreviewInfoRow(
                           'Cashier:',
-                          data.createdBy ?? 'System',
+                          provider.staff ?? 'System',
                           alignRight: true,
                         ),
 

@@ -1878,24 +1878,17 @@ class _CashierPageState extends State<CashierPage> with SingleTickerProviderStat
                         return;
                       }
 
-                      final newamountPaid =
-                          double.tryParse(amountPaidController!.text) ??
-                              totalAmount;
+                      final newamountPaid =double.tryParse(amountPaidController!.text) ??totalAmount;
 
-                      final totalamountPaid =
-                          newamountPaid + amountPaid;
+                      final totalamountPaid =newamountPaid + amountPaid;
 
-                      final balance =
-                          totalAmount - totalamountPaid;
+                      final balance = totalAmount - totalamountPaid;
 
-                      final change =
-                          totalamountPaid - totalAmount;
+                      final change = totalamountPaid - totalAmount;
 
-                      final accountNumber =
-                      accountNumberController?.text.trim();
+                      final accountNumber = accountNumberController?.text.trim();
 
-                      final reference =
-                      referenceController.text.trim();
+                      final reference =referenceController.text.trim();
 
                       final Map<String, Map<String, dynamic>>
                       paymentMethodConfig = {
@@ -1918,8 +1911,7 @@ class _CashierPageState extends State<CashierPage> with SingleTickerProviderStat
                         },
                       };
 
-                      final config =
-                          paymentMethodConfig[paymentMethod] ?? {};
+                      final config =paymentMethodConfig[paymentMethod] ?? {};
 
                       final paymentData = PaymentMethodModel(
                         id: invoiceId,
@@ -1928,8 +1920,7 @@ class _CashierPageState extends State<CashierPage> with SingleTickerProviderStat
                         paymentmethod: paymentMethod,
                         accountName:
                         config['accountName'] ?? paymentMethod,
-                        accountNumber:
-                        config['accountNumber'] ?? accountNumber,
+                        accountNumber:config['accountNumber'] ?? accountNumber,
                         status: config['status'] ?? true,
                         change: change,
                         balance: balance,
@@ -2030,35 +2021,35 @@ class _CashierPageState extends State<CashierPage> with SingleTickerProviderStat
     }
   }
 
-  IconData _getNetworkIcon(String network) {
-    switch (network.toLowerCase()) {
-      case 'mtn':
-        return Icons.network_cell;
-      case 'vodafone':
-        return Icons.signal_cellular_alt;
-      case 'airteltigo':
-        return Icons.wifi;
-      case 'telecel':
-        return Icons.phone_android;
-      default:
-        return Icons.sim_card;
+  bool _isDuplicateMomoTransactionId(int currentIndex) {
+    final currentId = momoTransactionControllers[currentIndex]
+        .text
+        .trim()
+        .toLowerCase();
+
+    if (currentId.isEmpty) {
+      return false;
     }
+
+    for (int i = 0; i < momoTransactionControllers.length; i++) {
+      if (i == currentIndex) {
+        continue;
+      }
+
+      final otherId = momoTransactionControllers[i]
+          .text
+          .trim()
+          .toLowerCase();
+
+      if (otherId.isNotEmpty && otherId == currentId) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
-  Color _getNetworkColor(String network) {
-    switch (network.toLowerCase()) {
-      case 'mtn':
-        return const Color(0xFFFFCC00); // MTN Yellow
-      case 'vodafone':
-        return const Color(0xFFE60000); // Vodafone Red
-      case 'airteltigo':
-        return const Color(0xFFED1C24); // AirtelTigo Red
-      case 'telecel':
-        return const Color(0xFF662D91); // Telecel Purple
-      default:
-        return Colors.grey;
-    }
-  }
+
   Widget _buildMomoTransactionFields() {
     if (paymentMethod.toLowerCase() != 'momo') {
       return const SizedBox();
@@ -2105,12 +2096,22 @@ class _CashierPageState extends State<CashierPage> with SingleTickerProviderStat
                               controller: momoTransactionControllers[index],
                               style: const TextStyle(color: Colors.white),
                               keyboardType: TextInputType.text,
+                              onChanged: (value) {
+                                setState(() {});
+                              },
                               decoration: InputDecoration(
                                 labelText: 'Transaction ID',
-                                labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
+                                labelStyle: TextStyle(
+                                  color: Colors.white.withOpacity(0.7),
+                                ),
                                 hintText: 'e.g., MTN12345678',
-                                hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-                                prefixIcon: const Icon(Icons.receipt_long, color: Colors.white70),
+                                hintStyle: TextStyle(
+                                  color: Colors.white.withOpacity(0.3),
+                                ),
+                                prefixIcon: const Icon(
+                                  Icons.receipt_long,
+                                  color: Colors.white70,
+                                ),
                                 filled: true,
                                 fillColor: const Color(0xFF0D1B2A),
                                 border: OutlineInputBorder(
@@ -2120,23 +2121,74 @@ class _CashierPageState extends State<CashierPage> with SingleTickerProviderStat
                               ),
                             ),
                           ),
+
                           const SizedBox(width: 8),
                           ElevatedButton(
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.blue.shade700,
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 10,
+                              ),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(8),
                               ),
                             ),
-                            onPressed: momoTransactionControllers[index].text.isEmpty
+                            onPressed: momoTransactionControllers[index]
+                                .text
+                                .trim()
+                                .isEmpty
                                 ? null
-                                : () => fetchMomoAmountForTransaction(index),
-                            child: const Text('Submit', style: TextStyle(color: Colors.white, fontSize: 12)),
+                                : () {
+                              if (_isDuplicateMomoTransactionId(index)) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'This transaction ID has already been entered.',
+                                    ),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                                return;
+                              }
+
+                              fetchMomoAmountForTransaction(index);
+                            },
+                            child: const Text(
+                              'Submit',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                              ),
+                            ),
                           ),
+                          // ElevatedButton(
+                          //   style: ElevatedButton.styleFrom(
+                          //     backgroundColor: Colors.blue.shade700,
+                          //     padding: const EdgeInsets.symmetric(
+                          //       horizontal: 12,
+                          //       vertical: 10,
+                          //     ),
+                          //     shape: RoundedRectangleBorder(
+                          //       borderRadius: BorderRadius.circular(8),
+                          //     ),
+                          //   ),
+                          //   onPressed: momoTransactionControllers[index]
+                          //       .text
+                          //       .trim()
+                          //       .isEmpty
+                          //       ? null
+                          //       : () => fetchMomoAmountForTransaction(index),
+                          //   child: const Text(
+                          //     'Submit',
+                          //     style: TextStyle(
+                          //       color: Colors.white,
+                          //       fontSize: 12,
+                          //     ),
+                          //   ),
+                          // ),
                         ],
-                      ),
-                      const SizedBox(height: 8),
+                      ),                      const SizedBox(height: 8),
                       TextFormField(
                         controller: momoTransactionAmountControllers[index],
                         readOnly: true,
